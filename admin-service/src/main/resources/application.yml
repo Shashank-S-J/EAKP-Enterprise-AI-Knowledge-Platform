@@ -80,6 +80,15 @@ spring:
       ssl:
         enabled: true
 
+  rabbitmq:
+    host: ${RABBITMQ_HOST}
+    port: ${RABBITMQ_PORT:5671}
+    username: ${RABBITMQ_USER}
+    password: ${RABBITMQ_PASS}
+    virtual-host: ${RABBITMQ_VHOST:${RABBITMQ_USER}}
+    ssl:
+      enabled: true
+
 # In prod, JWT_SECRET MUST be provided via env var — no fallback
 app:
   jwt:
