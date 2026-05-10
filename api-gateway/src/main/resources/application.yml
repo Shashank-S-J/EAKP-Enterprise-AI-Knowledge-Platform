@@ -53,8 +53,8 @@ app:
     refresh-expiration-ms: ${JWT_REFRESH_MS:604800000} # 7 days
 
   rate-limit:
-    auth-requests-per-minute: 10
-    api-requests-per-minute: 100
+    auth-requests-per-minute: 50
+    api-requests-per-minute: 800
 
   github:
     client-id: ${GITHUB_CLIENT_ID:}
