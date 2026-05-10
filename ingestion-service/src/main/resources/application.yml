@@ -137,6 +137,20 @@ spring:
     username: ${DB_USER:eakp}
     password: ${DB_PASS:}
 
+  data:
+    redis:
+      ssl:
+        enabled: true
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST}
+    port: ${RABBITMQ_PORT:5671}
+    username: ${RABBITMQ_USER}
+    password: ${RABBITMQ_PASS}
+    virtual-host: ${RABBITMQ_VHOST:${RABBITMQ_USER}}
+    ssl:
+      enabled: true
+
   ai:
     openai:
       base-url: https://api-inference.huggingface.co
@@ -159,4 +173,3 @@ app:
 logging:
   level:
     com.eakp: INFO
-

@@ -165,10 +165,12 @@ services:
       - key: RABBITMQ_HOST
         sync: false
       - key: RABBITMQ_PORT
-        value: "5672"
+        value: "5671"
       - key: RABBITMQ_USER
         sync: false
       - key: RABBITMQ_PASS
+        sync: false
+      - key: RABBITMQ_VHOST
         sync: false
       - key: HF_API_KEY
         sync: false
@@ -220,9 +222,10 @@ services:
       - key: RABBITMQ_HOST
         sync: false
       - key: RABBITMQ_PORT
-        value: "5672"
+        value: "5671"
       - key: RABBITMQ_USER
         sync: false
       - key: RABBITMQ_PASS
         sync: false
-
+      - key: RABBITMQ_VHOST
+        sync: false
