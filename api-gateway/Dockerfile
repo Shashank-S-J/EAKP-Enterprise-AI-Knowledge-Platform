@@ -31,9 +31,10 @@ USER eakp
 EXPOSE 8080
 
 ENTRYPOINT ["java", \
-    "-XX:+UseZGC", \
-    "-XX:+ZGenerational", \
-    "-XX:MaxRAMPercentage=75.0", \
+    "-XX:+UseSerialGC", \
+    "-Xms128m", \
+    "-Xmx256m", \
+    "-XX:MaxMetaspaceSize=128m", \
     "-Djava.security.egd=file:/dev/./urandom", \
     "-Dspring.profiles.active=${SPRING_PROFILES_ACTIVE:prod}", \
     "org.springframework.boot.loader.launch.JarLauncher"]
