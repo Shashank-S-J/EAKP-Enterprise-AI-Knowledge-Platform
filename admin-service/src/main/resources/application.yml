@@ -75,6 +75,11 @@ spring:
     username: ${DB_USER}
     password: ${DB_PASS}
 
+  data:
+    redis:
+      ssl:
+        enabled: true
+
 # In prod, JWT_SECRET MUST be provided via env var — no fallback
 app:
   jwt:

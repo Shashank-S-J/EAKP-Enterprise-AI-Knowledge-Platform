@@ -137,6 +137,11 @@ spring:
     username: ${DB_USER:eakp}
     password: ${DB_PASS:}
 
+  data:
+    redis:
+      ssl:
+        enabled: true
+
   ai:
     openai:
       base-url: https://api-inference.huggingface.co
@@ -159,4 +164,3 @@ app:
 logging:
   level:
     com.eakp: INFO
-
