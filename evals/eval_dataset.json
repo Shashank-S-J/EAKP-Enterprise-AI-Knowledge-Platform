@@ -1,0 +1,177 @@
+[
+  {
+    "id": "q001",
+    "question": "What is the refund policy for annual subscriptions?",
+    "ground_truth": "Annual subscriptions are eligible for a full refund within 30 days of purchase.",
+    "context_keywords": ["refund", "annual", "subscription", "30 days"],
+    "category": "policy"
+  },
+  {
+    "id": "q002",
+    "question": "How do I reset my password?",
+    "ground_truth": "Click 'Forgot Password' on the login page, enter your email, and follow the link sent to your inbox.",
+    "context_keywords": ["password", "reset", "forgot", "email"],
+    "category": "account"
+  },
+  {
+    "id": "q003",
+    "question": "What are the system requirements for the desktop application?",
+    "ground_truth": "The desktop app requires Windows 10 or macOS 12+, 8GB RAM, and 2GB free disk space.",
+    "context_keywords": ["system requirements", "Windows", "macOS", "RAM"],
+    "category": "technical"
+  },
+  {
+    "id": "q004",
+    "question": "How can I export my data?",
+    "ground_truth": "Navigate to Settings > Data > Export, choose your format (CSV or JSON), and click Download.",
+    "context_keywords": ["export", "data", "CSV", "JSON", "download"],
+    "category": "data"
+  },
+  {
+    "id": "q005",
+    "question": "What is the SLA for enterprise support?",
+    "ground_truth": "Enterprise customers receive a 4-hour response SLA for critical issues and 24-hour for standard issues.",
+    "context_keywords": ["SLA", "enterprise", "support", "response time"],
+    "category": "support"
+  },
+  {
+    "id": "q006",
+    "question": "Can I integrate with Slack?",
+    "ground_truth": "Yes, you can integrate with Slack via the integrations panel. Generate an API key and use the provided webhook URL.",
+    "context_keywords": ["Slack", "integration", "webhook", "API key"],
+    "category": "integration"
+  },
+  {
+    "id": "q007",
+    "question": "How is data encrypted at rest?",
+    "ground_truth": "All data is encrypted at rest using AES-256. Encryption keys are managed by AWS KMS.",
+    "context_keywords": ["encryption", "AES-256", "at rest", "KMS"],
+    "category": "security"
+  },
+  {
+    "id": "q008",
+    "question": "What is the maximum file upload size?",
+    "ground_truth": "The maximum file upload size is 100MB per file. Contact support for bulk upload options.",
+    "context_keywords": ["file", "upload", "size", "100MB"],
+    "category": "technical"
+  },
+  {
+    "id": "q009",
+    "question": "How do I add team members to my workspace?",
+    "ground_truth": "Go to Workspace Settings > Members > Invite. Enter the email address and select a role (Admin, Editor, or Viewer).",
+    "context_keywords": ["team", "members", "invite", "workspace", "role"],
+    "category": "account"
+  },
+  {
+    "id": "q010",
+    "question": "Does the platform support SSO?",
+    "ground_truth": "Yes, SSO is supported via SAML 2.0 and OIDC. Configure it in Settings > Security > Single Sign-On.",
+    "context_keywords": ["SSO", "SAML", "OIDC", "single sign-on"],
+    "category": "security"
+  },
+  {
+    "id": "q011",
+    "question": "What happens when my free trial expires?",
+    "ground_truth": "After trial expiry, your account moves to the free tier with limited features. Data is retained for 30 days.",
+    "context_keywords": ["trial", "expires", "free tier", "data retention"],
+    "category": "billing"
+  },
+  {
+    "id": "q012",
+    "question": "Is there a mobile app available?",
+    "ground_truth": "Yes, mobile apps are available for iOS (13+) and Android (10+) on their respective app stores.",
+    "context_keywords": ["mobile", "iOS", "Android", "app"],
+    "category": "product"
+  },
+  {
+    "id": "q013",
+    "question": "How do I upgrade my plan?",
+    "ground_truth": "Go to Billing > Plans and click Upgrade. Changes take effect immediately and you are charged the prorated difference.",
+    "context_keywords": ["upgrade", "plan", "billing", "prorated"],
+    "category": "billing"
+  },
+  {
+    "id": "q014",
+    "question": "What is the data retention policy?",
+    "ground_truth": "Active account data is retained indefinitely. Deleted data is purged after 90 days. Audit logs are kept for 1 year.",
+    "context_keywords": ["data retention", "deleted", "purged", "audit logs"],
+    "category": "policy"
+  },
+  {
+    "id": "q015",
+    "question": "Can I use the API without a paid plan?",
+    "ground_truth": "The API is available on all plans. Free tier has a limit of 100 requests per day. Paid plans start at 10,000/day.",
+    "context_keywords": ["API", "free tier", "rate limit", "requests per day"],
+    "category": "technical"
+  },
+  {
+    "id": "q016",
+    "question": "How do I contact customer support?",
+    "ground_truth": "Contact support via the Help icon in-app, email support@company.com, or call 1-800-XXX-XXXX on business days.",
+    "context_keywords": ["support", "contact", "email", "phone"],
+    "category": "support"
+  },
+  {
+    "id": "q017",
+    "question": "What compliance certifications does the platform hold?",
+    "ground_truth": "The platform is SOC 2 Type II certified, GDPR compliant, and HIPAA eligible for healthcare customers.",
+    "context_keywords": ["SOC 2", "GDPR", "HIPAA", "compliance"],
+    "category": "security"
+  },
+  {
+    "id": "q018",
+    "question": "How do I set up two-factor authentication?",
+    "ground_truth": "Go to Account Settings > Security > Two-Factor Authentication. Choose SMS or authenticator app and follow the setup wizard.",
+    "context_keywords": ["two-factor", "2FA", "authenticator", "SMS"],
+    "category": "security"
+  },
+  {
+    "id": "q019",
+    "question": "Can I downgrade my subscription?",
+    "ground_truth": "Downgrades take effect at the end of the current billing cycle. You retain current-plan features until then.",
+    "context_keywords": ["downgrade", "subscription", "billing cycle"],
+    "category": "billing"
+  },
+  {
+    "id": "q020",
+    "question": "What is the uptime SLA?",
+    "ground_truth": "We guarantee 99.9% monthly uptime. Scheduled maintenance is excluded and communicated 48 hours in advance.",
+    "context_keywords": ["uptime", "SLA", "99.9%", "maintenance"],
+    "category": "policy"
+  },
+  {
+    "id": "q021",
+    "question": "How do webhooks work?",
+    "ground_truth": "Webhooks send HTTP POST requests to your endpoint when events occur. Configure them in Settings > Integrations > Webhooks.",
+    "context_keywords": ["webhook", "HTTP POST", "events", "endpoint"],
+    "category": "technical"
+  },
+  {
+    "id": "q022",
+    "question": "Is offline access supported?",
+    "ground_truth": "The desktop app supports offline mode for viewing cached documents. Edits sync automatically when reconnected.",
+    "context_keywords": ["offline", "cached", "sync", "reconnect"],
+    "category": "product"
+  },
+  {
+    "id": "q023",
+    "question": "How do I delete my account?",
+    "ground_truth": "Go to Account Settings > Danger Zone > Delete Account. This is irreversible. Data is permanently deleted after 30 days.",
+    "context_keywords": ["delete account", "irreversible", "permanently"],
+    "category": "account"
+  },
+  {
+    "id": "q024",
+    "question": "What payment methods are accepted?",
+    "ground_truth": "We accept Visa, Mastercard, American Express, and PayPal. Annual plans also accept wire transfer and purchase orders.",
+    "context_keywords": ["payment", "Visa", "Mastercard", "PayPal", "wire transfer"],
+    "category": "billing"
+  },
+  {
+    "id": "q025",
+    "question": "How do I get an invoice for my payment?",
+    "ground_truth": "Invoices are emailed automatically after each payment. You can also download them from Billing > Invoice History.",
+    "context_keywords": ["invoice", "billing", "download", "payment"],
+    "category": "billing"
+  }
+]

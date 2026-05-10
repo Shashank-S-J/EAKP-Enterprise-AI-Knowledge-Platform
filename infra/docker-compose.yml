@@ -1,0 +1,287 @@
+# ── Shared env vars for all app services (override for prod) ──────────────────
+x-app-env: &app-env
+  DB_HOST: postgres
+  DB_PORT: 5432
+  DB_NAME: eakp
+  DB_USER: eakp
+  DB_PASS: eakp_local_pass
+  REDIS_HOST: redis
+  REDIS_PORT: 6379
+  REDIS_PASS: eakp_redis_pass
+  RABBITMQ_HOST: rabbitmq
+  RABBITMQ_PORT: 5672
+  RABBITMQ_USER: eakp
+  RABBITMQ_PASS: eakp_local_pass
+  JWT_SECRET: ${JWT_SECRET:-dGhpcy1pcy1hLXZlcnktbG9uZy1zZWNyZXQta2V5LWZvci1kZXZlbG9wbWVudC1vbmx5LW1pbmltdW0tMjU2LWJpdHM=}
+  CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: eakp-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: eakp
+      POSTGRES_USER: eakp
+      POSTGRES_PASSWORD: eakp_local_pass
+    ports: ["5432:5432"]
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U eakp -d eakp"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [eakp-backend]
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  redis:
+    image: redis:7-alpine
+    container_name: eakp-redis
+    restart: unless-stopped
+    command: redis-server --requirepass eakp_redis_pass
+    ports: ["6379:6379"]
+    volumes: [redis_data:/data]
+    healthcheck:
+      test: ["CMD","redis-cli","-a","eakp_redis_pass","ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [eakp-backend]
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: eakp-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: eakp
+      RABBITMQ_DEFAULT_PASS: eakp_local_pass
+    ports: ["5672:5672","15672:15672"]
+    volumes: [rabbitmq_data:/var/lib/rabbitmq]
+    healthcheck:
+      test: ["CMD","rabbitmq-diagnostics","ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks: [eakp-backend]
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  minio:
+    image: minio/minio:latest
+    container_name: eakp-minio
+    restart: unless-stopped
+    command: server /data --console-address ':9001'
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    ports: ["9000:9000","9001:9001"]
+    volumes: [minio_data:/data]
+    healthcheck:
+      test: ["CMD","curl","-f","http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks: [eakp-backend]
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: eakp-prometheus
+    restart: unless-stopped
+    ports: ["9090:9090"]
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command: ['--config.file=/etc/prometheus/prometheus.yml','--storage.tsdb.path=/prometheus','--web.enable-lifecycle']
+    networks: [eakp-monitoring, eakp-backend]
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: eakp-grafana
+    restart: unless-stopped
+    ports: ["3000:3000"]
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on: [prometheus]
+    networks: [eakp-monitoring]
+
+  # ── Application Services ──────────────────────────────────────────────────────
+
+  api-gateway:
+    build:
+      context: ..
+      dockerfile: api-gateway/Dockerfile
+    container_name: eakp-api-gateway
+    restart: unless-stopped
+    ports: ["8080:8080"]
+    environment:
+      <<: *app-env
+      SPRING_PROFILES_ACTIVE: docker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD","curl","-f","http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks: [eakp-backend]
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  chat-service:
+    build:
+      context: ..
+      dockerfile: chat-service/Dockerfile
+    container_name: eakp-chat-service
+    restart: unless-stopped
+    ports: ["8081:8081"]
+    environment:
+      <<: *app-env
+      SPRING_PROFILES_ACTIVE: docker
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD","curl","-f","http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks: [eakp-backend]
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  ingestion-service:
+    build:
+      context: ..
+      dockerfile: ingestion-service/Dockerfile
+    container_name: eakp-ingestion-service
+    restart: unless-stopped
+    ports: ["8082:8082"]
+    environment:
+      <<: *app-env
+      SPRING_PROFILES_ACTIVE: docker
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin123
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD","curl","-f","http://localhost:8082/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks: [eakp-backend]
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  admin-service:
+    build:
+      context: ..
+      dockerfile: admin-service/Dockerfile
+    container_name: eakp-admin-service
+    restart: unless-stopped
+    ports: ["8083:8083"]
+    environment:
+      <<: *app-env
+      SPRING_PROFILES_ACTIVE: docker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD","curl","-f","http://localhost:8083/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks: [eakp-backend]
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: eakp-frontend
+    restart: unless-stopped
+    ports: ["5173:80"]
+    depends_on:
+      - api-gateway
+      - chat-service
+      - ingestion-service
+      - admin-service
+    healthcheck:
+      test: ["CMD","curl","-f","http://localhost:80/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks: [eakp-backend]
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+volumes:
+  pg_data:
+  redis_data:
+  rabbitmq_data:
+  minio_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  eakp-backend:
+    driver: bridge
+  eakp-monitoring:
+    driver: bridge
+

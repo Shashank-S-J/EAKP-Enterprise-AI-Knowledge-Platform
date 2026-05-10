@@ -1,0 +1,228 @@
+# Render.com Blueprint — deploy all backend services
+# Free tier: 512MB RAM, sleeps after 15min inactivity
+# Docs: https://render.com/docs/blueprint-spec
+
+databases:
+  - name: eakp-postgres
+    plan: free
+    databaseName: eakp
+    user: eakp
+    postgresMajorVersion: "16"
+    ipAllowList: []
+
+services:
+  # ── API Gateway ────────────────────────────────────────────────────────────
+  - type: web
+    name: eakp-api-gateway
+    runtime: docker
+    plan: free
+    dockerfilePath: ./api-gateway/Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DB_HOST
+        fromDatabase:
+          name: eakp-postgres
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: eakp-postgres
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: eakp-postgres
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: eakp-postgres
+          property: user
+      - key: DB_PASS
+        fromDatabase:
+          name: eakp-postgres
+          property: password
+      - key: DATABASE_URL
+        fromDatabase:
+          name: eakp-postgres
+          property: connectionString
+      - key: REDIS_HOST
+        sync: false
+      - key: REDIS_PORT
+        value: "6379"
+      - key: REDIS_PASS
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+
+  # ── Chat Service ───────────────────────────────────────────────────────────
+  - type: web
+    name: eakp-chat-service
+    runtime: docker
+    plan: free
+    dockerfilePath: ./chat-service/Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DB_HOST
+        fromDatabase:
+          name: eakp-postgres
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: eakp-postgres
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: eakp-postgres
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: eakp-postgres
+          property: user
+      - key: DB_PASS
+        fromDatabase:
+          name: eakp-postgres
+          property: password
+      - key: REDIS_HOST
+        sync: false
+      - key: REDIS_PORT
+        value: "6379"
+      - key: REDIS_PASS
+        sync: false
+      - key: JWT_SECRET
+        fromService:
+          name: eakp-api-gateway
+          type: web
+          envVarKey: JWT_SECRET
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: HF_API_KEY
+        sync: false
+
+  # ── Ingestion Service ──────────────────────────────────────────────────────
+  - type: web
+    name: eakp-ingestion-service
+    runtime: docker
+    plan: free
+    dockerfilePath: ./ingestion-service/Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DB_HOST
+        fromDatabase:
+          name: eakp-postgres
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: eakp-postgres
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: eakp-postgres
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: eakp-postgres
+          property: user
+      - key: DB_PASS
+        fromDatabase:
+          name: eakp-postgres
+          property: password
+      - key: REDIS_HOST
+        sync: false
+      - key: REDIS_PORT
+        value: "6379"
+      - key: REDIS_PASS
+        sync: false
+      - key: JWT_SECRET
+        fromService:
+          name: eakp-api-gateway
+          type: web
+          envVarKey: JWT_SECRET
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: MINIO_ENDPOINT
+        sync: false
+      - key: MINIO_ACCESS_KEY
+        sync: false
+      - key: MINIO_SECRET_KEY
+        sync: false
+      - key: RABBITMQ_HOST
+        sync: false
+      - key: RABBITMQ_PORT
+        value: "5672"
+      - key: RABBITMQ_USER
+        sync: false
+      - key: RABBITMQ_PASS
+        sync: false
+      - key: HF_API_KEY
+        sync: false
+
+  # ── Admin Service ──────────────────────────────────────────────────────────
+  - type: web
+    name: eakp-admin-service
+    runtime: docker
+    plan: free
+    dockerfilePath: ./admin-service/Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DB_HOST
+        fromDatabase:
+          name: eakp-postgres
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: eakp-postgres
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: eakp-postgres
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: eakp-postgres
+          property: user
+      - key: DB_PASS
+        fromDatabase:
+          name: eakp-postgres
+          property: password
+      - key: REDIS_HOST
+        sync: false
+      - key: REDIS_PORT
+        value: "6379"
+      - key: REDIS_PASS
+        sync: false
+      - key: JWT_SECRET
+        fromService:
+          name: eakp-api-gateway
+          type: web
+          envVarKey: JWT_SECRET
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: RABBITMQ_HOST
+        sync: false
+      - key: RABBITMQ_PORT
+        value: "5672"
+      - key: RABBITMQ_USER
+        sync: false
+      - key: RABBITMQ_PASS
+        sync: false
+

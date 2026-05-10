@@ -1,0 +1,147 @@
+name: EAKP CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  JAVA_VERSION: '21'
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository_owner }}/eakp
+
+jobs:
+  # ── Test all modules ──────────────────────────────────────────────────────
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: eakp_test
+          POSTGRES_USER: eakp
+          POSTGRES_PASSWORD: test_pass
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      rabbitmq:
+        image: rabbitmq:3.13-alpine
+        ports: ["5672:5672"]
+        options: >-
+          --health-cmd "rabbitmq-diagnostics ping"
+          --health-interval 30s
+          --health-timeout 10s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          cache: maven
+
+      - name: Load schema
+        run: |
+          PGPASSWORD=test_pass psql -h localhost -U eakp -d eakp_test \
+            -f infra/sql/init.sql
+        env:
+          PGPASSWORD: test_pass
+
+      - name: Build and test
+        run: ./mvnw verify -B --no-transfer-progress
+        env:
+          SPRING_PROFILES_ACTIVE: test
+          DB_HOST: localhost
+          DB_NAME: eakp_test
+          DB_USER: eakp
+          DB_PASS: test_pass
+          REDIS_HOST: localhost
+          RABBITMQ_HOST: localhost
+          RABBITMQ_USER: guest
+          RABBITMQ_PASS: guest
+          MINIO_ENDPOINT: http://localhost:9000
+          JWT_SECRET: dGVzdC1zZWNyZXQta2V5LWZvci1jaS1vbmx5LW1pbmltdW0tMjU2LWJpdHM=
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: "**/target/surefire-reports/"
+
+  # ── Build Docker images ───────────────────────────────────────────────────
+  build:
+    name: Docker Build - ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        service: [api-gateway, chat-service, ingestion-service, admin-service]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.service }}
+          tags: |
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ matrix.service }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ── Deploy to Railway ─────────────────────────────────────────────────────
+  deploy:
+    name: Deploy - ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    strategy:
+      matrix:
+        service: [api-gateway, chat-service, ingestion-service, admin-service]
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm install -g @railway/cli
+      - name: Deploy ${{ matrix.service }}
+        run: railway up --service ${{ matrix.service }} --detach
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}

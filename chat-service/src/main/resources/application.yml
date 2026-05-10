@@ -1,0 +1,220 @@
+server:
+  port: ${PORT:8081}
+  shutdown: graceful
+
+spring:
+  application:
+    name: chat-service
+  threads:
+    virtual:
+      enabled: true
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:eakp}
+    username: ${DB_USER:eakp}
+    password: ${DB_PASS:eakp_local_pass}
+    hikari:
+      maximum-pool-size: 15
+      minimum-idle: 5
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  flyway:
+    enabled: false
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASS:}
+      timeout: 2000ms
+
+  # pgvector store (Spring AI)
+  ai:
+    vectorstore:
+      pgvector:
+        initialize-schema: false   # managed by init.sql
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimensions: 768            # nomic-embed-text dims
+
+# JWT (same secret as api-gateway — for token validation)
+app:
+  jwt:
+    secret: ${JWT_SECRET:dGhpcy1pcy1hLXZlcnktbG9uZy1zZWNyZXQta2V5LWZvci1kZXZlbG9wbWVudC1vbmx5LW1pbmltdW0tMjU2LWJpdHM=}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+    allowed-headers: Authorization,Content-Type,X-Correlation-Id
+
+  rag:
+    chunk-size: 512
+    chunk-overlap: 64
+    top-k-retrieve: 20          # Candidates from hybrid search
+    top-k-rerank: 5             # Final chunks sent to LLM
+    reranker: llm               # llm | cohere | none
+    semantic-cache-threshold: 0.92
+    cache-ttl-hours: 24
+    max-conversation-messages: 10
+    summarize-after-messages: 8
+    max-context-chars: 8000     # Max chars of context sent to LLM prompt
+    low-confidence-threshold: 0.6  # Below this, don't cache answers
+    query-rewrite-enabled: true    # Multi-turn query rewriting
+    query-rewrite-history-messages: 4  # Recent messages used for rewrite
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus, metrics
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  health:
+    circuitbreakers:
+      enabled: true
+
+# Resilience4j circuit breakers for LLM calls
+resilience4j:
+  circuitbreaker:
+    instances:
+      llmChat:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+        permittedNumberOfCallsInHalfOpenState: 3
+        slidingWindowType: COUNT_BASED
+      llmGuard:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+        permittedNumberOfCallsInHalfOpenState: 3
+      llmRerank:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 20s
+        permittedNumberOfCallsInHalfOpenState: 3
+      llmSummarise:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+        permittedNumberOfCallsInHalfOpenState: 3
+      llmRewrite:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 60
+        waitDurationInOpenState: 15s
+        permittedNumberOfCallsInHalfOpenState: 3
+  timelimiter:
+    instances:
+      llmChat:
+        timeoutDuration: 60s
+      llmGuard:
+        timeoutDuration: 30s
+      llmRerank:
+        timeoutDuration: 30s
+      llmSummarise:
+        timeoutDuration: 30s
+      llmRewrite:
+        timeoutDuration: 10s
+
+logging:
+  level:
+    com.eakp: DEBUG
+    org.springframework.ai: INFO
+    dev.langchain4j: INFO
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] [%X{correlationId:-}] %-5level %logger{36} - %msg%n"
+
+---
+# ── LOCAL profile (Ollama - fully free) ──────────────────────────────────────
+spring:
+  config:
+    activate:
+      on-profile: local
+
+  ai:
+    ollama:
+      base-url: http://localhost:11434
+      chat:
+        options:
+          model: deepseek-r1:7b
+          temperature: 0.1
+          num-ctx: 8192
+      embedding:
+        options:
+          model: nomic-embed-text
+
+---
+# ── PROD profile (Groq free tier) ────────────────────────────────────────────
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:eakp}}
+    username: ${DB_USER:eakp}
+    password: ${DB_PASS:}
+
+  ai:
+    openai:
+      base-url: https://api.groq.com/openai
+      api-key: ${GROQ_API_KEY}
+      chat:
+        options:
+          model: llama-3.3-70b-versatile
+          temperature: 0.1
+          max-tokens: 2048
+      embedding:
+        # HuggingFace Inference API (free)
+        base-url: https://api-inference.huggingface.co
+        api-key: ${HF_API_KEY}
+        options:
+          model: sentence-transformers/all-MiniLM-L6-v2
+    vectorstore:
+      pgvector:
+        dimensions: 384  # all-MiniLM-L6-v2 = 384 dims
+
+# In prod, JWT_SECRET MUST be provided via env var — no fallback
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
+    allowed-headers: Authorization,Content-Type,X-Correlation-Id
+
+logging:
+  level:
+    com.eakp: INFO
+
+---
+# ── TEST profile ──────────────────────────────────────────────────────────────
+spring:
+  config:
+    activate:
+      on-profile: test
+
+  datasource:
+    url: jdbc:tc:postgresql:16:///eakp_test?TC_IMAGE=pgvector/pgvector:pg16
+    username: test
+    password: test
+
+  ai:
+    ollama:
+      base-url: http://localhost:11434  # mocked in tests

@@ -1,0 +1,99 @@
+{
+  "dashboard": {
+    "title": "EAKP Platform Overview",
+    "uid": "eakp-overview",
+    "timezone": "browser",
+    "refresh": "30s",
+    "panels": [
+      {
+        "title": "Request Rate (per service)",
+        "type": "timeseries",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+        "targets": [
+          {
+            "expr": "rate(http_server_requests_seconds_count{application=~\"api-gateway|chat-service|ingestion-service|admin-service\"}[5m])",
+            "legendFormat": "{{application}} {{method}} {{uri}}"
+          }
+        ]
+      },
+      {
+        "title": "Response Time P95",
+        "type": "timeseries",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_server_requests_seconds_bucket{application=~\"api-gateway|chat-service|ingestion-service|admin-service\"}[5m]))",
+            "legendFormat": "{{application}} p95"
+          }
+        ]
+      },
+      {
+        "title": "Error Rate (5xx)",
+        "type": "stat",
+        "gridPos": { "h": 4, "w": 6, "x": 0, "y": 8 },
+        "targets": [
+          {
+            "expr": "sum(rate(http_server_requests_seconds_count{status=~\"5..\"}[5m]))"
+          }
+        ]
+      },
+      {
+        "title": "Ingestion Pipeline Duration",
+        "type": "timeseries",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(ingestion_pipeline_duration_seconds_bucket[5m]))",
+            "legendFormat": "p95"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(ingestion_pipeline_duration_seconds_bucket[5m]))",
+            "legendFormat": "p50"
+          }
+        ]
+      },
+      {
+        "title": "Ingestion Success/Failure",
+        "type": "timeseries",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+        "targets": [
+          {
+            "expr": "rate(ingestion_documents_success_total[5m])",
+            "legendFormat": "success"
+          },
+          {
+            "expr": "rate(ingestion_documents_failure_total[5m])",
+            "legendFormat": "failure"
+          }
+        ]
+      },
+      {
+        "title": "JVM Heap Usage",
+        "type": "timeseries",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+        "targets": [
+          {
+            "expr": "jvm_memory_used_bytes{area=\"heap\",application=~\"api-gateway|chat-service|ingestion-service|admin-service\"} / 1024 / 1024",
+            "legendFormat": "{{application}} (MB)"
+          }
+        ]
+      },
+      {
+        "title": "DB Connection Pool",
+        "type": "timeseries",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+        "targets": [
+          {
+            "expr": "hikaricp_connections_active{application=~\"api-gateway|chat-service|ingestion-service|admin-service\"}",
+            "legendFormat": "{{application}} active"
+          },
+          {
+            "expr": "hikaricp_connections_idle{application=~\"api-gateway|chat-service|ingestion-service|admin-service\"}",
+            "legendFormat": "{{application}} idle"
+          }
+        ]
+      }
+    ]
+  }
+}
+
