@@ -4,8 +4,6 @@ import com.eakp.common.security.BaseJwtAuthFilter;
 import com.eakp.common.security.CorsConfigHelper;
 import com.eakp.common.security.JwtTokenValidator;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -33,28 +31,22 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource))
-            .csrf(AbstractHttpConfigurer::disable)
-            .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(a -> a
-                .requestMatchers("/actuator/health", "/actuator/prometheus").permitAll()
-                // Admin endpoints: ADMIN role required
-                .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                // Analytics readable by any authenticated user
-                .requestMatchers("/api/v1/analytics/**").authenticated()
-                // Workspace config readable by any authenticated user
-                .requestMatchers("/api/v1/workspaces/**").authenticated()
-                .anyRequest().authenticated())
-            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
-            .build();
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
+                .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(a -> a
+                        .requestMatchers("/actuator/health", "/actuator/prometheus").permitAll()
+                        // Admin endpoints: ADMIN role required
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        // Analytics readable by any authenticated user
+                        .requestMatchers("/api/v1/analytics/**").authenticated()
+                        // Workspace config readable by any authenticated user
+                        .requestMatchers("/api/v1/workspaces/**").authenticated()
+                        .anyRequest().authenticated())
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                .build();
     }
 
-    @Bean
-    public ObjectMapper objectMapper() {
-        return new ObjectMapper()
-            .registerModule(new JavaTimeModule())
-            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-    }
 
     // ── JWT filter ────────────────────────────────────────────────────────────
 

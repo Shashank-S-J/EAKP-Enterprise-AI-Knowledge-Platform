@@ -167,6 +167,10 @@ spring:
     activate:
       on-profile: prod
 
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.autoconfigure.ollama.OllamaAutoConfiguration
+
   datasource:
     url: ${DATABASE_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:eakp}}
     username: ${DB_USER:eakp}
