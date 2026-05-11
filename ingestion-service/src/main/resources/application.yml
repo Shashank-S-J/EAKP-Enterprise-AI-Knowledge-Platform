@@ -164,6 +164,7 @@ spring:
       embedding:
         options:
           model: mistral-embed
+          encodingFormat: float
     vectorstore:
       pgvector:
         table-name: document_chunks
