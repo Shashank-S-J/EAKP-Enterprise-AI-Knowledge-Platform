@@ -192,15 +192,15 @@ spring:
           temperature: 0.1
           max-tokens: 2048
       embedding:
-        # HuggingFace Inference API (free, OpenAI-compatible)
-        base-url: https://router.huggingface.co
-        api-key: ${HF_API_KEY}
+        # Mistral AI free tier (OpenAI-compatible /v1/embeddings)
+        base-url: https://api.mistral.ai
+        api-key: ${MISTRAL_API_KEY}
         options:
-          model: sentence-transformers/all-MiniLM-L6-v2
+          model: mistral-embed
     vectorstore:
       pgvector:
         table-name: document_chunks
-        dimensions: 384  # all-MiniLM-L6-v2 = 384 dims
+        dimensions: 1024  # mistral-embed = 1024 dims
 
 # In prod, JWT_SECRET MUST be provided via env var — no fallback
 app:
