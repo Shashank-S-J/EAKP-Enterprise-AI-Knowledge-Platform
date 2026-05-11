@@ -109,7 +109,7 @@ services:
         sync: false
       - key: GROQ_API_KEY
         sync: false
-      - key: HF_API_KEY
+      - key: MISTRAL_API_KEY
         sync: false
 
   # ── Ingestion Service ──────────────────────────────────────────────────────
@@ -172,7 +172,7 @@ services:
         sync: false
       - key: RABBITMQ_VHOST
         sync: false
-      - key: HF_API_KEY
+      - key: MISTRAL_API_KEY
         sync: false
 
   # ── Admin Service ──────────────────────────────────────────────────────────
