@@ -66,99 +66,110 @@ public class ChatService {
      * @return Flux of SSE-ready strings: tokens, then a [DONE] marker
      */
     public Flux<String> streamAnswer(String query,
-                                      UUID   conversationId,
-                                      UUID   workspaceId,
-                                      UUID   userId) {
+                                     UUID   conversationId,
+                                     UUID   workspaceId,
+                                     UUID   userId) {
 
-        Instant start = Instant.now();
+        final Instant start = Instant.now();
 
-        // 1. Rewrite query for multi-turn clarity (resolve "it", "that", etc.)
-        String rewrittenQuery;
-        try {
-            rewrittenQuery = queryRewriter.rewrite(query, conversationId, workspaceId);
-        } catch (Exception e) {
-            log.debug("Query rewrite skipped: {}", e.getMessage());
-            rewrittenQuery = query;
-        }
-        final String effectiveQuery = rewrittenQuery;
+        // Wrap everything in a deferred Flux so blocking calls don't throw 500s
+        return Flux.defer(() -> {
+            // 1. Rewrite query for multi-turn clarity (resolve "it", "that", etc.)
+            String rewrittenQuery;
+            try {
+                rewrittenQuery = queryRewriter.rewrite(query, conversationId, workspaceId);
+            } catch (Exception e) {
+                log.debug("Query rewrite skipped: {}", e.getMessage());
+                rewrittenQuery = query;
+            }
+            final String effectiveQuery = rewrittenQuery;
 
-        // 2. Check semantic cache (fast pgvector cosine lookup)
-        Optional<CachedAnswer> cached =
-                semanticCache.findSimilar(effectiveQuery, workspaceId);
+            // 2. Check semantic cache (fast pgvector cosine lookup)
+            Optional<CachedAnswer> cached;
+            try {
+                cached = semanticCache.findSimilar(effectiveQuery, workspaceId);
+            } catch (Exception e) {
+                log.warn("Semantic cache lookup failed: {}", e.getMessage());
+                cached = Optional.empty();
+            }
 
-        if (cached.isPresent()) {
-            metrics.recordCacheHit();
-            log.info("Cache HIT for ws={}", workspaceId);
-            CachedAnswer answer = cached.get();
+            if (cached.isPresent()) {
+                metrics.recordCacheHit();
+                log.info("Cache HIT for ws={}", workspaceId);
+                CachedAnswer answer = cached.get();
 
-            // Persist the message even on cache hit for conversation history
-            persistMessagesAsync(conversationId, workspaceId,
-                    query, answer.answer(), List.of(), 1.0);
+                // Persist the message even on cache hit for conversation history
+                persistMessagesAsync(conversationId, workspaceId,
+                        query, answer.answer(), List.of(), 1.0);
 
-            return Flux.fromIterable(splitIntoTokens(answer.answer()))
-                    .concatWith(Flux.just("[DONE]"));
-        }
+                return Flux.fromIterable(splitIntoTokens(answer.answer()))
+                        .concatWith(Flux.just("[DONE]"));
+            }
 
-        metrics.recordCacheMiss();
+            metrics.recordCacheMiss();
 
-        // 3 + 4: Retrieve context and history
-        return Mono.fromCallable(() -> {
-                    List<RetrievedChunk> context =
-                            ragPipeline.retrieve(effectiveQuery, workspaceId);
-                    metrics.recordChunksRetrieved(context.size());
-                    return context;
-                })
-                .subscribeOn(Schedulers.boundedElastic())
-                .flatMapMany(context -> {
-                    // Load conversation history
-                    String history = "";
-                    try {
-                        history = memoryService.buildHistoryPrompt(
-                                conversationId, workspaceId);
-                    } catch (Exception e) {
-                        log.warn("Could not load history: {}", e.getMessage());
-                    }
+            // 3 + 4: Retrieve context and history
+            return Mono.fromCallable(() -> {
+                        List<RetrievedChunk> context =
+                                ragPipeline.retrieve(effectiveQuery, workspaceId);
+                        metrics.recordChunksRetrieved(context.size());
+                        return context;
+                    })
+                    .subscribeOn(Schedulers.boundedElastic())
+                    .flatMapMany(context -> {
+                        // Load conversation history
+                        String history = "";
+                        try {
+                            history = memoryService.buildHistoryPrompt(
+                                    conversationId, workspaceId);
+                        } catch (Exception e) {
+                            log.warn("Could not load history: {}", e.getMessage());
+                        }
 
-                    // Limit context size to prevent LLM truncation
-                    List<RetrievedChunk> trimmedContext = trimContext(context);
+                        // Limit context size to prevent LLM truncation
+                        List<RetrievedChunk> trimmedContext = trimContext(context);
 
-                    // Build the prompt
-                    String systemPrompt = buildSystemPrompt(trimmedContext);
-                    String userMessage  = buildUserMessage(effectiveQuery, history);
+                        // Build the prompt
+                        String systemPrompt = buildSystemPrompt(trimmedContext);
+                        String userMessage  = buildUserMessage(effectiveQuery, history);
 
-                    final List<RetrievedChunk> capturedContext   = trimmedContext;
-                    final AtomicReference<StringBuilder> buffer  =
-                            new AtomicReference<>(new StringBuilder());
+                        final List<RetrievedChunk> capturedContext   = trimmedContext;
+                        final AtomicReference<StringBuilder> buffer  =
+                                new AtomicReference<>(new StringBuilder());
 
-                    Instant llmStart = Instant.now();
+                        Instant llmStart = Instant.now();
 
-                    // 5. Stream the LLM response
-                    return chatClient.prompt()
-                            .system(systemPrompt)
-                            .user(userMessage)
-                            .stream()
-                            .content()
-                            .doOnNext(token ->
-                                    buffer.get().append(token))
-                            .doOnComplete(() -> {
-                                String fullAnswer = buffer.get().toString();
+                        // 5. Stream the LLM response
+                        return chatClient.prompt()
+                                .system(systemPrompt)
+                                .user(userMessage)
+                                .stream()
+                                .content()
+                                .doOnNext(token ->
+                                        buffer.get().append(token))
+                                .doOnComplete(() -> {
+                                    String fullAnswer = buffer.get().toString();
 
-                                metrics.recordLlmLatency(
-                                        Duration.between(llmStart, Instant.now()));
-                                metrics.recordPipelineLatency(
-                                        Duration.between(start, Instant.now()));
+                                    metrics.recordLlmLatency(
+                                            Duration.between(llmStart, Instant.now()));
+                                    metrics.recordPipelineLatency(
+                                            Duration.between(start, Instant.now()));
 
-                                Mono.fromRunnable(() ->
-                                    postProcess(query, effectiveQuery, workspaceId,
-                                            conversationId, userId,
-                                            fullAnswer, capturedContext))
-                                    .subscribeOn(Schedulers.boundedElastic())
-                                    .subscribe();
-                            })
-                            .doOnError(e ->
-                                    log.error("Streaming error for ws={}", workspaceId, e))
-                            .concatWith(Flux.just("[DONE]"));
-                });
+                                    Mono.fromRunnable(() ->
+                                                    postProcess(query, effectiveQuery, workspaceId,
+                                                            conversationId, userId,
+                                                            fullAnswer, capturedContext))
+                                            .subscribeOn(Schedulers.boundedElastic())
+                                            .subscribe();
+                                })
+                                .doOnError(e ->
+                                        log.error("Streaming error for ws={}", workspaceId, e))
+                                .concatWith(Flux.just("[DONE]"));
+                    });
+        }).onErrorResume(e -> {
+            log.error("Chat stream error for ws={}", workspaceId, e);
+            return Flux.just("[ERROR] " + e.getMessage(), "[DONE]");
+        });
     }
 
     // ── Context trimming to fit LLM window ────────────────────────────────────
@@ -198,12 +209,12 @@ public class ChatService {
     // ── Post-processing (async, off streaming thread) ─────────────────────────
 
     private void postProcess(String originalQuery,
-                              String effectiveQuery,
-                              UUID   workspaceId,
-                              UUID   conversationId,
-                              UUID   userId,
-                              String answer,
-                              List<RetrievedChunk> context) {
+                             String effectiveQuery,
+                             UUID   workspaceId,
+                             UUID   conversationId,
+                             UUID   userId,
+                             String answer,
+                             List<RetrievedChunk> context) {
         try {
             // Hallucination guard
             GroundingResult grounding =
@@ -246,11 +257,11 @@ public class ChatService {
     }
 
     private void persistMessagesAsync(UUID   conversationId,
-                                       UUID   workspaceId,
-                                       String userQuery,
-                                       String assistantAnswer,
-                                       List<Message.SourceReference> sources,
-                                       double faithfulness) {
+                                      UUID   workspaceId,
+                                      String userQuery,
+                                      String assistantAnswer,
+                                      List<Message.SourceReference> sources,
+                                      double faithfulness) {
         try {
             memoryService.appendUserMessage(
                     conversationId, workspaceId, userQuery);
