@@ -40,52 +40,53 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http)
             throws Exception {
         return http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource))
-            .csrf(AbstractHttpConfigurer::disable)
-            .headers(headers -> headers
-                .frameOptions(frame -> frame.deny())
-                .httpStrictTransportSecurity(hsts -> hsts
-                    .includeSubDomains(true)
-                    .maxAgeInSeconds(31536000))
-                .contentTypeOptions(contentType -> {})
-                .xssProtection(xss -> xss.disable()) // modern browsers use CSP instead
-                .addHeaderWriter((request, response) -> {
-                    response.setHeader("X-Permitted-Cross-Domain-Policies", "none");
-                    response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-                    response.setHeader("Permissions-Policy",
-                        "camera=(), microphone=(), geolocation=(), payment=()");
-                })
-            )
-            .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                // Public endpoints
-                .requestMatchers(
-                    "/api/v1/auth/register",
-                    "/api/v1/auth/login",
-                    "/api/v1/auth/oauth",
-                    "/api/v1/auth/oauth/github/callback",
-                    "/api/v1/auth/oauth/google/callback",
-                    "/api/v1/auth/refresh",
-                    "/api/v1/auth/logout",
-                    "/api/v1/auth/forgot-password",
-                    "/api/v1/auth/reset-password",
-                    "/actuator/health",
-                    "/actuator/info"
-                ).permitAll()
-                // Prometheus metrics - restrict to monitoring network in prod
-                .requestMatchers("/actuator/prometheus").permitAll()
-                // Admin-only
-                .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                // Everything else requires authentication
-                .anyRequest().authenticated()
-            )
-            .authenticationProvider(authenticationProvider())
-            .addFilterBefore(jwtAuthFilter,
-                UsernamePasswordAuthenticationFilter.class)
-            .addFilterAfter(rateLimitFilter,
-                JwtAuthenticationFilter.class)
-            .build();
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
+                .csrf(AbstractHttpConfigurer::disable)
+                .headers(headers -> headers
+                        .frameOptions(frame -> frame.deny())
+                        .httpStrictTransportSecurity(hsts -> hsts
+                                .includeSubDomains(true)
+                                .maxAgeInSeconds(31536000))
+                        .contentTypeOptions(contentType -> {})
+                        .xssProtection(xss -> xss.disable()) // modern browsers use CSP instead
+                        .addHeaderWriter((request, response) -> {
+                            response.setHeader("X-Permitted-Cross-Domain-Policies", "none");
+                            response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+                            response.setHeader("Permissions-Policy",
+                                    "camera=(), microphone=(), geolocation=(), payment=()");
+                        })
+                )
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        // Public endpoints
+                        .requestMatchers(
+                                "/api/v1/auth/register",
+                                "/api/v1/auth/login",
+                                "/api/v1/auth/oauth",
+                                "/api/v1/auth/oauth/github/callback",
+                                "/api/v1/auth/oauth/google/callback",
+                                "/api/v1/auth/refresh",
+                                "/api/v1/auth/logout",
+                                "/api/v1/auth/forgot-password",
+                                "/api/v1/auth/reset-password",
+                                "/actuator/health",
+                                "/actuator/info",
+                                "/error"
+                        ).permitAll()
+                        // Prometheus metrics - restrict to monitoring network in prod
+                        .requestMatchers("/actuator/prometheus").permitAll()
+                        // Admin-only
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        // Everything else requires authentication
+                        .anyRequest().authenticated()
+                )
+                .authenticationProvider(authenticationProvider())
+                .addFilterBefore(jwtAuthFilter,
+                        UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(rateLimitFilter,
+                        JwtAuthenticationFilter.class)
+                .build();
     }
 
     @Bean
