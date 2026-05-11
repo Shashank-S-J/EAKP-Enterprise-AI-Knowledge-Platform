@@ -60,6 +60,7 @@ spring:
     vectorstore:
       pgvector:
         initialize-schema: false
+        table-name: document_chunks
         index-type: HNSW
         distance-type: COSINE_DISTANCE
         dimensions: 768
@@ -157,13 +158,14 @@ spring:
 
   ai:
     openai:
-      base-url: https://api-inference.huggingface.co
+      base-url: https://api-inference.huggingface.co/v1
       api-key: ${HF_API_KEY}
       embedding:
         options:
           model: sentence-transformers/all-MiniLM-L6-v2
     vectorstore:
       pgvector:
+        table-name: document_chunks
         dimensions: 384  # all-MiniLM-L6-v2 = 384 dims
 
 # In prod, JWT_SECRET MUST be provided via env var — no fallback
