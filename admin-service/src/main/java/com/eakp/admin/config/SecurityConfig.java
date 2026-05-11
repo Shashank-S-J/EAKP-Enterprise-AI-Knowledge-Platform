@@ -35,7 +35,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(a -> a
-                        .requestMatchers("/actuator/health", "/actuator/prometheus").permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/prometheus", "/error").permitAll()
                         // Admin endpoints: ADMIN role required
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         // Analytics readable by any authenticated user

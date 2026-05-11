@@ -136,6 +136,10 @@ spring:
     activate:
       on-profile: prod
 
+  web:
+    resources:
+      add-mappings: false
+
   autoconfigure:
     exclude:
       - org.springframework.ai.autoconfigure.ollama.OllamaAutoConfiguration

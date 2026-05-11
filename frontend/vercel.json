@@ -2,6 +2,7 @@
   "rewrites": [
     { "source": "/api/v1/auth/:path*", "destination": "https://eakp-api-gateway.onrender.com/api/v1/auth/:path*" },
     { "source": "/api/v1/chat/:path*", "destination": "https://eakp-chat-service.onrender.com/api/v1/chat/:path*" },
+    { "source": "/api/v1/documents", "destination": "https://eakp-ingestion-service.onrender.com/api/v1/documents" },
     { "source": "/api/v1/documents/:path*", "destination": "https://eakp-ingestion-service.onrender.com/api/v1/documents/:path*" },
     { "source": "/api/v1/analytics/:path*", "destination": "https://eakp-admin-service.onrender.com/api/v1/analytics/:path*" },
     { "source": "/api/v1/admin/:path*", "destination": "https://eakp-admin-service.onrender.com/api/v1/admin/:path*" },
