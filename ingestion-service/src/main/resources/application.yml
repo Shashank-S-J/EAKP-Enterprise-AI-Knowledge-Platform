@@ -158,7 +158,7 @@ spring:
 
   ai:
     openai:
-      base-url: https://api-inference.huggingface.co
+      base-url: https://router.huggingface.co
       api-key: ${HF_API_KEY}
       embedding:
         options:

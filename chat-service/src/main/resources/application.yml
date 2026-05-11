@@ -193,7 +193,7 @@ spring:
           max-tokens: 2048
       embedding:
         # HuggingFace Inference API (free, OpenAI-compatible)
-        base-url: https://api-inference.huggingface.co
+        base-url: https://router.huggingface.co
         api-key: ${HF_API_KEY}
         options:
           model: sentence-transformers/all-MiniLM-L6-v2
