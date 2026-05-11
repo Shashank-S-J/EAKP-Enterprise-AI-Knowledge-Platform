@@ -5,6 +5,9 @@ server:
 spring:
   application:
     name: chat-service
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: false
   threads:
     virtual:
       enabled: true

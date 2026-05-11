@@ -1,12 +1,13 @@
 package com.eakp.chat.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.micrometer.core.aop.TimedAspect;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.AsyncConfigurer;
@@ -27,17 +28,20 @@ public class AppConfig implements AsyncConfigurer {
     }
 
     @Bean
-    public ObjectMapper objectMapper() {
-        return new ObjectMapper()
-            .registerModule(new JavaTimeModule())
-            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    public Jackson2ObjectMapperBuilderCustomizer jacksonCustomizer() {
+        return builder -> builder
+                .modules(new JavaTimeModule())
+                .featuresToDisable(
+                        SerializationFeature.WRITE_DATES_AS_TIMESTAMPS,
+                        DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES
+                );
     }
 
 
     @Bean
     public ChatClient chatClient(ChatModel chatModel) {
         return ChatClient.builder(chatModel)
-            .defaultSystem("""
+                .defaultSystem("""
                 You are a helpful assistant that answers questions
                 using ONLY the provided context.
                 Always cite your sources using [Source: filename] notation.
@@ -45,17 +49,17 @@ public class AppConfig implements AsyncConfigurer {
                 "I don't have enough information to answer that question."
                 Be concise and precise.
                 """)
-            .build();
+                .build();
     }
 
     @Bean("guardChatClient")
     public ChatClient guardChatClient(ChatModel chatModel) {
         return ChatClient.builder(chatModel)
-            .defaultSystem("""
+                .defaultSystem("""
                 You are a strict fact-checker. Respond ONLY with
                 valid JSON. No markdown, no explanation.
                 """)
-            .build();
+                .build();
     }
 
     @Override
