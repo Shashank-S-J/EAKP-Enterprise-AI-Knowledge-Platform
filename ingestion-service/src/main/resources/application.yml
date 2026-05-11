@@ -138,9 +138,9 @@ spring:
       - org.springframework.ai.autoconfigure.ollama.OllamaAutoConfiguration
 
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:eakp}}
-    username: ${DB_USER:eakp}
-    password: ${DB_PASS:}
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${DB_NAME}?sslmode=require
+    username: ${DB_USER}
+    password: ${DB_PASS}
 
   data:
     redis:
