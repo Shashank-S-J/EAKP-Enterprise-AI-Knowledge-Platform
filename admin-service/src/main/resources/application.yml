@@ -71,7 +71,7 @@ spring:
       on-profile: prod
 
   datasource:
-    url: ${DATABASE_URL}
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${DB_NAME}?sslmode=require
     username: ${DB_USER}
     password: ${DB_PASS}
 
