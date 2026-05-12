@@ -92,6 +92,10 @@ public class IngestionPipelineService {
         updateStatus(event.documentId(), Document.DocumentStatus.PROCESSING, null, null);
 
         try {
+            // Step 1b: Idempotency — clear any chunks from a previous (failed/retried)
+            // run so we never accumulate duplicates if RabbitMQ redelivers the message.
+            vectorStoreWriter.deleteByDocument(event.documentId());
+
             // Step 2: Download from MinIO
             log.debug("  [2/6] Downloading from storage: {}", event.storageKey());
 

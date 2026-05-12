@@ -40,14 +40,18 @@ public class AuthService {
             throw new AuthException("Email already in use: " + request.email());
         }
 
-        // Create or find workspace
-        Workspace workspace = workspaceRepository
-                .findBySlug(request.workspaceSlug())
-                .orElseGet(() -> workspaceRepository.save(
-                        Workspace.builder()
-                                .name(request.workspaceName())
-                                .slug(request.workspaceSlug())
-                                .build()));
+        // Create workspace. Reject if a workspace with this slug already exists —
+        // otherwise a user could squat on an existing org by guessing its name/slug.
+        if (workspaceRepository.findBySlug(request.workspaceSlug()).isPresent()) {
+            throw new AuthException(
+                    "A workspace with this name already exists. Please choose a different name " +
+                            "or ask an existing member to invite you.");
+        }
+        Workspace workspace = workspaceRepository.save(
+                Workspace.builder()
+                        .name(request.workspaceName())
+                        .slug(request.workspaceSlug())
+                        .build());
 
         // Enforce password complexity
         validatePasswordComplexity(request.password());
@@ -85,20 +89,31 @@ public class AuthService {
                     return buildAuthResponse(existingUser);
                 })
                 .orElseGet(() -> {
-                    // New user — create workspace + user
+                    // New user — create workspace + user.
+                    // Use the provided workspaceName if any, otherwise derive a personal one.
+                    // If the resulting slug collides with an existing workspace, append a short
+                    // random suffix so the new user always gets their own workspace (never
+                    // auto-joins an existing org via slug guessing).
                     String wsName = request.workspaceName() != null && !request.workspaceName().isBlank()
                             ? request.workspaceName()
                             : request.fullName() + "'s Workspace";
-                    String wsSlug = wsName.toLowerCase().replaceAll("[^a-z0-9]+", "-")
+                    String baseSlug = wsName.toLowerCase().replaceAll("[^a-z0-9]+", "-")
                             .replaceAll("^-|-$", "");
-
-                    Workspace workspace = workspaceRepository
-                            .findBySlug(wsSlug)
-                            .orElseGet(() -> workspaceRepository.save(
-                                    Workspace.builder()
-                                            .name(wsName)
-                                            .slug(wsSlug)
-                                            .build()));
+                    String wsSlug = baseSlug;
+                    int attempt = 0;
+                    while (workspaceRepository.findBySlug(wsSlug).isPresent() && attempt < 5) {
+                        attempt++;
+                        wsSlug = baseSlug + "-" + java.util.UUID.randomUUID().toString().substring(0, 6);
+                    }
+                    if (workspaceRepository.findBySlug(wsSlug).isPresent()) {
+                        throw new AuthException("Could not provision workspace, please try again.");
+                    }
+                    final String finalSlug = wsSlug;
+                    Workspace workspace = workspaceRepository.save(
+                            Workspace.builder()
+                                    .name(wsName)
+                                    .slug(finalSlug)
+                                    .build());
 
                     User user = userRepository.save(User.builder()
                             .email(request.email())
@@ -119,12 +134,12 @@ public class AuthService {
     // ── Login ─────────────────────────────────────────────────────────────
 
     public AuthResponse login(LoginRequest request) {
-     // Check brute-force lockout
+        // Check brute-force lockout
         if (loginAttemptService.isLocked(request.email())) {
             long remaining = loginAttemptService.getRemainingLockoutSeconds(request.email());
             throw new AuthException(
                     "Account temporarily locked due to too many failed attempts. Try again in "
-                    + (remaining / 60 + 1) + " minutes.");
+                            + (remaining / 60 + 1) + " minutes.");
         }
 
         // Check if user exists and is active before attempting authentication
@@ -138,7 +153,7 @@ public class AuthService {
         if (user.getPassword() == null) {
             throw new AuthException(
                     "This account uses " + user.getAuthProvider() + " login. Please sign in with " +
-                    user.getAuthProvider().toLowerCase() + " instead.");
+                            user.getAuthProvider().toLowerCase() + " instead.");
         }
 
         if (!user.isActive()) {

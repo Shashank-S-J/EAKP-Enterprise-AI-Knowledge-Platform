@@ -5,6 +5,9 @@ server:
 spring:
   application:
     name: api-gateway
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
   threads:
     virtual:
       enabled: true   # Java 21 virtual threads
@@ -25,7 +28,6 @@ spring:
     open-in-view: false
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
 
   flyway:
@@ -35,6 +37,8 @@ spring:
 
   data:
     redis:
+      repositories:
+        enabled: false           # JPA-only service; suppress Redis repo scan
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASS:}
@@ -53,8 +57,8 @@ app:
     refresh-expiration-ms: ${JWT_REFRESH_MS:604800000} # 7 days
 
   rate-limit:
-    auth-requests-per-minute: 50
-    api-requests-per-minute: 800
+    auth-requests-per-minute: 10
+    api-requests-per-minute: 100
 
   github:
     client-id: ${GITHUB_CLIENT_ID:}
