@@ -94,10 +94,10 @@
         </dependency>
 
         <!-- AWS S3 SDK (S3-compatible object store – works with Supabase, MinIO, etc.) -->
+        <!-- Version is managed by the awssdk BOM in the parent pom — do not pin here. -->
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>s3</artifactId>
-            <version>2.25.60</version>
         </dependency>
 
         <!-- Apache Tika (document parsing) -->
