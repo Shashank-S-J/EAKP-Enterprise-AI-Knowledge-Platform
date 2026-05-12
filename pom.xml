@@ -34,12 +34,24 @@
         <jjwt.version>0.12.6</jjwt.version>
         <testcontainers.version>1.20.1</testcontainers.version>
         <lombok.version>1.18.38</lombok.version>
+        <awssdk.version>2.25.60</awssdk.version>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
     </properties>
 
     <dependencyManagement>
         <dependencies>
+            <!-- AWS SDK v2 BOM — MUST be imported BEFORE spring-ai-bom so its
+                 awssdk versions win (first-declared-wins in Maven). Otherwise
+                 Spring AI pins sdk-core to 2.21.44 while we use s3 features from
+                 2.25.60, causing NoClassDefFoundError at runtime. -->
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${awssdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
             <dependency>
                 <groupId>com.eakp</groupId>
                 <artifactId>eakp-common</artifactId>
