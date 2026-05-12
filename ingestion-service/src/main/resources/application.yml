@@ -9,6 +9,9 @@ server:
 spring:
   application:
     name: ingestion-service
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
   jackson:
     deserialization:
       fail-on-unknown-properties: false
@@ -29,15 +32,14 @@ spring:
       ddl-auto: validate
     show-sql: false
     open-in-view: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
 
   flyway:
     enabled: false
 
   data:
     redis:
+      repositories:
+        enabled: false           # JPA-only service; suppress Redis repo scan
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASS:}
@@ -142,6 +144,7 @@ spring:
 
   autoconfigure:
     exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
       - org.springframework.ai.autoconfigure.ollama.OllamaAutoConfiguration
 
   datasource:

@@ -14,12 +14,14 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
 
     List<Message> findByConversationIdOrderByCreatedAtAsc(UUID conversationId);
 
+    Optional<Message> findByIdAndConversationId(UUID id, UUID conversationId);
+
     Optional<Message> findFirstByConversationIdAndRoleOrderByCreatedAtAsc(
             UUID conversationId, String role);
 
     long countByConversationId(UUID conversationId);
 
     @Query(value = "SELECT * FROM messages WHERE conversation_id = ?1 ORDER BY created_at DESC LIMIT ?2",
-           nativeQuery = true)
+            nativeQuery = true)
     List<Message> findTopNByConversationIdOrderByCreatedAtDesc(UUID conversationId, int limit);
 }

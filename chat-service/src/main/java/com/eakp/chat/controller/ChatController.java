@@ -51,7 +51,7 @@ public class ChatController {
      *   event: done\ndata: [DONE]\n\n
      */
     @PostMapping(value = "/stream",
-                produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+            produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<String>> streamChat(
             @RequestBody @jakarta.validation.Valid com.eakp.chat.dto.ChatRequest chatRequest,
             Authentication auth) {
@@ -91,10 +91,17 @@ public class ChatController {
                 })
                 .onErrorResume(e -> {
                     log.error("Stream error", e);
-                    return Flux.just(ServerSentEvent.<String>builder()
-                            .event("error")
-                            .data("Stream error: " + e.getMessage())
-                            .build());
+                    // Emit the error event followed by a terminal done event so the
+                    // SSE client cleanly closes instead of waiting/retrying.
+                    return Flux.just(
+                            ServerSentEvent.<String>builder()
+                                    .event("error")
+                                    .data("Stream error: " + e.getMessage())
+                                    .build(),
+                            ServerSentEvent.<String>builder()
+                                    .event("done")
+                                    .data("[DONE]")
+                                    .build());
                 });
     }
 
@@ -270,11 +277,13 @@ public class ChatController {
             throw new IllegalArgumentException("Rating must be 'positive' or 'negative'");
         }
 
-        // Update the message's feedback in DB
-        messageRepo.findById(msgId).ifPresent(msg -> {
-            msg.setFeedback(rating);
-            messageRepo.save(msg);
-        });
+        // Update the message's feedback in DB — verify the message belongs to this
+        // conversation so a user cannot rate messages they don't own by guessing UUIDs.
+        Message msg = messageRepo.findByIdAndConversationId(msgId, convId)
+                .orElseThrow(() -> new java.util.NoSuchElementException(
+                        "Message not found in this conversation: " + msgId));
+        msg.setFeedback(rating);
+        messageRepo.save(msg);
 
         log.info("Feedback recorded: conv={} msg={} rating={}", convId, msgId, rating);
         return java.util.Map.of("message", "Feedback recorded", "rating", rating);
@@ -325,9 +334,9 @@ public class ChatController {
         List<SourceDto> sources = m.getSources() == null
                 ? List.of()
                 : m.getSources().stream()
-                        .map(s -> new SourceDto(
-                                s.chunkId(), s.snippet(), s.source()))
-                        .collect(Collectors.toList());
+                .map(s -> new SourceDto(
+                        s.chunkId(), s.snippet(), s.source()))
+                .collect(Collectors.toList());
 
         Double faithfulness = m.getFaithfulness() == null
                 ? null : m.getFaithfulness().doubleValue();
