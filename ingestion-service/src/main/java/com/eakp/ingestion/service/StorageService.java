@@ -50,43 +50,82 @@ public class StorageService {
 
     // ── Init ──────────────────────────────────────────────────────────────────
 
+    /**
+     * Verify the configured bucket exists and is reachable. Fails fast at startup
+     * if not — prevents the silent "DB row created but no file in storage" symptom
+     * users see when env vars (endpoint / region / bucket name) are wrong or the
+     * bucket was never created via the provider's dashboard.
+     *
+     * NOTE: We do NOT attempt to create the bucket. Supabase Storage rejects
+     * S3 CreateBucket calls — buckets must be created via the Supabase UI.
+     */
     @PostConstruct
     void ensureBucketExists() {
+        log.info("Storage config: endpoint={} region={} bucket={}", endpoint, region, bucket);
         try {
             s3Client.headBucket(HeadBucketRequest.builder().bucket(bucket).build());
+            log.info("Storage bucket '{}' is reachable", bucket);
         } catch (NoSuchBucketException e) {
-            try {
-                s3Client.createBucket(CreateBucketRequest.builder().bucket(bucket).build());
-                log.info("Created S3 bucket: {}", bucket);
-            } catch (Exception ex) {
-                log.error("Failed to create S3 bucket: {}", ex.getMessage());
-            }
+            throw new IllegalStateException(
+                    "Storage bucket '" + bucket + "' does not exist at " + endpoint +
+                            ". Create it in your provider's dashboard (Supabase: Storage → New bucket) " +
+                            "and ensure MINIO_BUCKET matches exactly (case-sensitive).", e);
+        } catch (S3Exception e) {
+            throw new IllegalStateException(
+                    "Cannot access storage bucket '" + bucket + "' at " + endpoint +
+                            " (HTTP " + e.statusCode() + "): " + e.awsErrorDetails().errorMessage() +
+                            ". Check MINIO_ENDPOINT / MINIO_REGION / MINIO_ACCESS_KEY / MINIO_SECRET_KEY.", e);
         } catch (Exception e) {
-            log.error("Failed to check S3 bucket: {}", e.getMessage());
+            throw new IllegalStateException(
+                    "Failed to verify storage bucket '" + bucket + "' at " + endpoint +
+                            ": " + e.getMessage(), e);
         }
     }
 
     // ── Upload ────────────────────────────────────────────────────────────────
 
     /**
-     * Upload a multipart file to S3.
+     * Upload a multipart file to S3-compatible storage.
+     * Verifies the object exists after PUT so silent failures (wrong region,
+     * misrouted requests) become loud instead of leaving orphan DB rows.
      * Returns the object key for later retrieval.
      */
     public String upload(MultipartFile file, UUID workspaceId,
                          UUID documentId) throws Exception {
         String key = buildKey(workspaceId, documentId, file.getOriginalFilename());
 
-        s3Client.putObject(
-                PutObjectRequest.builder()
-                        .bucket(bucket)
-                        .key(key)
-                        .contentType(file.getContentType() != null
-                                ? file.getContentType() : "application/octet-stream")
-                        .contentLength(file.getSize())
-                        .build(),
-                RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
+        try {
+            s3Client.putObject(
+                    PutObjectRequest.builder()
+                            .bucket(bucket)
+                            .key(key)
+                            .contentType(file.getContentType() != null
+                                    ? file.getContentType() : "application/octet-stream")
+                            .contentLength(file.getSize())
+                            .build(),
+                    RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
+        } catch (S3Exception e) {
+            log.error("S3 putObject failed for bucket={} key={} (HTTP {}): {}",
+                    bucket, key, e.statusCode(), e.awsErrorDetails().errorMessage());
+            throw e;
+        }
 
-        log.info("Uploaded {} → {}", file.getOriginalFilename(), key);
+        // Verify the object actually landed in the expected bucket.
+        try {
+            HeadObjectResponse head = s3Client.headObject(HeadObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(key)
+                    .build());
+            log.info("Uploaded {} -> s3://{}/{} ({} bytes)",
+                    file.getOriginalFilename(), bucket, key, head.contentLength());
+        } catch (Exception e) {
+            log.error("PUT to s3://{}/{} reported success but verification failed: {}",
+                    bucket, key, e.getMessage());
+            throw new IllegalStateException(
+                    "Upload to bucket '" + bucket + "' at " + endpoint + " appeared to succeed " +
+                            "but the object cannot be read back. Likely cause: MINIO_REGION does not match " +
+                            "the Supabase project region, or MINIO_BUCKET name is wrong.", e);
+        }
         return key;
     }
 
