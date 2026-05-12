@@ -27,7 +27,11 @@ COPY --from=builder /build/snapshot-dependencies/ ./
 COPY --from=builder /build/application/           ./
 USER eakp
 EXPOSE 8082
-ENTRYPOINT ["java", "-XX:+UseSerialGC", "-Xms128m", "-Xmx256m", "-XX:MaxMetaspaceSize=128m", \
+ENTRYPOINT ["java", "-XX:+UseSerialGC", \
+    "-Xms96m", "-Xmx192m", \
+    "-XX:MaxMetaspaceSize=256m", "-XX:ReservedCodeCacheSize=48m", \
+    "-XX:MaxDirectMemorySize=64m", "-XX:TieredStopAtLevel=1", \
+    "-XX:+ExitOnOutOfMemoryError", \
     "-Djava.security.egd=file:/dev/./urandom",\
     "-Dspring.profiles.active=${SPRING_PROFILES_ACTIVE:prod}",\
     "org.springframework.boot.loader.launch.JarLauncher"]
