@@ -25,7 +25,12 @@ public class IngestionEventPublisher {
     public void publishIngestionRequest(IngestionRequestedEvent event) {
         log.info("Publishing ingestion request: document={} workspace={}",
                 event.documentId(), event.workspaceId());
-        rabbitTemplate.convertAndSend(exchange, ingestRoutingKey, event);
+        try {
+            rabbitTemplate.convertAndSend(exchange, ingestRoutingKey, event);
+        } catch (Exception e) {
+            log.warn("RabbitMQ publish failed (broker unreachable?): {}. " +
+                    "This is non-fatal because ingestion now runs synchronously.", e.getMessage());
+        }
     }
 
     public void publishIngestionCompleted(IngestionCompletedEvent event) {
