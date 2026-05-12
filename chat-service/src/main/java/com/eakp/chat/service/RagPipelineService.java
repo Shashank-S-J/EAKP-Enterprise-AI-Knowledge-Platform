@@ -40,6 +40,9 @@ public class RagPipelineService {
     @Value("${app.rag.top-k-rerank:5}")
     private int topKRerank;
 
+    @Value("${app.rag.similarity-threshold:0.3}")
+    private double similarityThreshold;
+
     // ── Public API ────────────────────────────────────────────────────────────
 
     /**
@@ -48,7 +51,17 @@ public class RagPipelineService {
      */
     @Timed(value = "rag.retrieve.latency", description = "RAG retrieve pipeline latency")
     public List<RetrievedChunk> retrieve(String query, UUID workspaceId) {
-        log.debug("RAG retrieve: query='{}' workspace={}", query, workspaceId);
+        log.info("RAG retrieve: query='{}' workspace={}", query, workspaceId);
+
+        // Diagnostic: how many chunks exist at all for this workspace?
+        Integer totalChunks = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*)::int FROM document_chunks WHERE workspace_id = ?::uuid",
+                Integer.class, workspaceId.toString());
+        Integer chunksWithEmbedding = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*)::int FROM document_chunks WHERE workspace_id = ?::uuid AND embedding IS NOT NULL",
+                Integer.class, workspaceId.toString());
+        log.info("Workspace {} has {} chunks ({} with embeddings) in DB",
+                workspaceId, totalChunks, chunksWithEmbedding);
 
         // 1. Vector search (semantic)
         List<ScoredChunk> vectorResults = vectorSearch(query, workspaceId);
@@ -56,16 +69,55 @@ public class RagPipelineService {
         // 2. Full-text search (BM25 / keyword)
         List<ScoredChunk> textResults = fullTextSearch(query, workspaceId);
 
+        log.info("RAG candidates: vector={} text={} (workspace has {} chunks total)",
+                vectorResults.size(), textResults.size(), totalChunks);
+
         // 3. Reciprocal Rank Fusion
         List<ScoredChunk> fused = reciprocalRankFusion(vectorResults, textResults);
+
+        // 3b. Fallback: if hybrid search found nothing but the workspace HAS
+        // chunks, fall back to returning the most recent chunks. This makes
+        // resume-style "tell me about this person" queries work even when
+        // the embedding similarity is low.
+        if (fused.isEmpty() && chunksWithEmbedding != null && chunksWithEmbedding > 0) {
+            log.warn("Hybrid search returned 0 chunks for workspace={} despite {} chunks in DB — falling back to recent chunks",
+                    workspaceId, chunksWithEmbedding);
+            fused = recentChunksFallback(workspaceId);
+        }
 
         // 4. Re-rank top candidates
         List<RetrievedChunk> reranked = reRankingService.rerank(
                 query,
                 fused.stream().limit(topKRetrieve).toList());
 
-        log.debug("RAG retrieved {} chunks after re-ranking", reranked.size());
+        log.info("RAG retrieved {} chunks after re-ranking", reranked.size());
         return reranked.stream().limit(topKRerank).toList();
+    }
+
+    /** Last-resort fallback: return the most recent chunks for the workspace. */
+    private List<ScoredChunk> recentChunksFallback(UUID workspaceId) {
+        String sql = """
+            SELECT id::text, content,
+                   metadata->>'source'      AS source,
+                   metadata->>'document_id' AS document_id
+            FROM document_chunks
+            WHERE workspace_id = ?::uuid
+            ORDER BY created_at DESC
+            LIMIT ?
+            """;
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                sql, workspaceId.toString(), topKRetrieve);
+        List<ScoredChunk> results = new ArrayList<>();
+        for (int i = 0; i < rows.size(); i++) {
+            Map<String, Object> row = rows.get(i);
+            results.add(new ScoredChunk(
+                    String.valueOf(row.get("id")),
+                    String.valueOf(row.get("content")),
+                    String.valueOf(row.get("source")),
+                    String.valueOf(row.get("document_id")),
+                    i + 1, 0));
+        }
+        return results;
     }
 
     // ── Vector Search ─────────────────────────────────────────────────────────
@@ -79,10 +131,16 @@ public class RagPipelineService {
                 .query(query)
                 .topK(topKRetrieve)
                 .filterExpression(filter)
-                .similarityThreshold(0.6)   // discard weak matches (tuned for precision)
+                .similarityThreshold(similarityThreshold)
                 .build();
 
-        List<Document> docs = vectorStore.similaritySearch(request);
+        List<Document> docs;
+        try {
+            docs = vectorStore.similaritySearch(request);
+        } catch (Exception e) {
+            log.error("Vector search failed for workspace={}: {}", workspaceId, e.getMessage(), e);
+            return List.of();
+        }
 
         List<ScoredChunk> results = new ArrayList<>();
         for (int i = 0; i < docs.size(); i++) {
@@ -187,20 +245,20 @@ public class RagPipelineService {
     // ── Value Objects ─────────────────────────────────────────────────────────
 
     public record ScoredChunk(
-        String id,
-        String content,
-        String source,
-        String documentId,
-        int    vectorRank,
-        int    textRank
+            String id,
+            String content,
+            String source,
+            String documentId,
+            int    vectorRank,
+            int    textRank
     ) {}
 
     public record RetrievedChunk(
-        String id,
-        String content,
-        String source,
-        String documentId,
-        double relevanceScore
+            String id,
+            String content,
+            String source,
+            String documentId,
+            double relevanceScore
     ) {
         /** Format for injection into the LLM prompt. */
         public String toPromptString() {

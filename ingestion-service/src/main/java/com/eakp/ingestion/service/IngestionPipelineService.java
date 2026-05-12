@@ -34,37 +34,37 @@ import java.util.stream.Collectors;
  * Core ingestion pipeline orchestrator.
  *
  * Pipeline steps:
- *   1. Mark document as PROCESSING
- *   2. Download raw bytes from MinIO
- *   3. Parse text (Apache Tika)
- *   4. Chunk text (recursive splitter)
- *   5. Embed chunks in batches (EmbeddingService)
- *   6. Write chunks + embeddings to pgvector (VectorStoreWriter)
- *   7. Mark document as READY
- *   8. Evict semantic cache for workspace
- *   9. Publish completion event
+ * 1. Mark document as PROCESSING
+ * 2. Download raw bytes from MinIO
+ * 3. Parse text (Apache Tika)
+ * 4. Chunk text (recursive splitter)
+ * 5. Embed chunks in batches (EmbeddingService)
+ * 6. Write chunks + embeddings to pgvector (VectorStoreWriter)
+ * 7. Mark document as READY
+ * 8. Evict semantic cache for workspace
+ * 9. Publish completion event
  *
  * Triggered by: RabbitMQ IngestionRequestedEvent (async)
- *               OR direct call from DocumentService (sync, dev mode)
+ * OR direct call from DocumentService (sync, dev mode)
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class IngestionPipelineService {
 
-    private final DocumentRepository      documentRepository;
-    private final StorageService          storageService;
-    private final DocumentParser          documentParser;
-    private final TextChunker             textChunker;
-    private final EmbeddingService        embeddingService;
-    private final VectorStoreWriter       vectorStoreWriter;
+    private final DocumentRepository documentRepository;
+    private final StorageService storageService;
+    private final DocumentParser documentParser;
+    private final TextChunker textChunker;
+    private final EmbeddingService embeddingService;
+    private final VectorStoreWriter vectorStoreWriter;
     private final IngestionEventPublisher eventPublisher;
-    private final JdbcTemplate            jdbcTemplate;
-    private final MeterRegistry           meterRegistry;
+    private final JdbcTemplate jdbcTemplate;
+    private final MeterRegistry meterRegistry;
 
     private Counter successCounter;
     private Counter failureCounter;
-    private Timer   pipelineTimer;
+    private Timer pipelineTimer;
 
     @PostConstruct
     void initMetrics() {
@@ -72,7 +72,7 @@ public class IngestionPipelineService {
                 .description("Successfully ingested documents").register(meterRegistry);
         failureCounter = Counter.builder("ingestion.documents.failure")
                 .description("Failed document ingestions").register(meterRegistry);
-        pipelineTimer  = Timer.builder("ingestion.pipeline.duration")
+        pipelineTimer = Timer.builder("ingestion.pipeline.duration")
                 .description("Full pipeline duration per document")
                 .publishPercentiles(0.5, 0.95).register(meterRegistry);
     }
@@ -137,10 +137,16 @@ public class IngestionPipelineService {
             // Step 8: Evict semantic cache so stale answers don't persist
             evictSemanticCache(event.workspaceId());
 
-            // Step 9: Publish success event
-            eventPublisher.publishIngestionCompleted(
-                    IngestionCompletedEvent.success(
-                            event.documentId(), event.workspaceId(), saved.size()));
+            // Step 9: Publish success event (best-effort — broker may be unavailable)
+            try {
+                eventPublisher.publishIngestionCompleted(
+                        IngestionCompletedEvent.success(
+                                event.documentId(), event.workspaceId(), saved.size()));
+            } catch (Exception ex) {
+                log.warn("Could not publish ingestion-completed event for document={} ({}). " +
+                                "Pipeline succeeded; broker just isn't reachable.",
+                        event.documentId(), ex.getMessage());
+            }
 
             Duration elapsed = Duration.between(start, Instant.now());
             pipelineTimer.record(elapsed);
@@ -156,13 +162,18 @@ public class IngestionPipelineService {
             updateStatus(event.documentId(),
                     Document.DocumentStatus.FAILED, e.getMessage(), 0);
 
-            eventPublisher.publishIngestionCompleted(
-                    IngestionCompletedEvent.failure(
-                            event.documentId(), event.workspaceId(),
-                            e.getMessage()));
+            // Best-effort failure event
+            try {
+                eventPublisher.publishIngestionCompleted(
+                        IngestionCompletedEvent.failure(
+                                event.documentId(), event.workspaceId(),
+                                e.getMessage()));
+            } catch (Exception ignored) {
+                // broker unreachable — status is already persisted in DB
+            }
 
             failureCounter.increment();
-            // Re-throw so RabbitMQ knows to retry / send to DLQ
+            // Re-throw so caller (sync upload or RabbitMQ retry) knows
             throw new IngestionPipelineException("Ingestion pipeline failed", e);
         }
     }

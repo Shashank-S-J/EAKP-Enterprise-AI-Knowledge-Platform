@@ -31,6 +31,7 @@ public class DocumentService {
     private final StorageService          storageService;
     private final IngestionEventPublisher eventPublisher;
     private final VectorStoreWriter       vectorStoreWriter;
+    private final IngestionPipelineService pipelineService;
 
     @Value("${app.ingestion.supported-types:pdf,docx,doc,txt,md,html,pptx,xlsx,csv,json,xml,rtf,htm}")
     private String supportedTypesConfig;
@@ -38,17 +39,23 @@ public class DocumentService {
     // ── Upload ────────────────────────────────────────────────────────────────
 
     /**
-     * Accept a file upload:
+     * Accept a file upload and run the full ingestion pipeline synchronously.
      *   1. Validate file type and size
      *   2. Save metadata to DB (status=PENDING)
-     *   3. Upload raw bytes to MinIO
-     *   4. Publish async ingestion request to RabbitMQ
-     *   5. Return the document DTO (client polls for status)
+     *   3. Upload raw bytes to object storage
+     *   4. Run the pipeline IN-LINE: parse → chunk → embed → write vectors
+     *      → mark READY (or FAILED on error)
+     *   5. Best-effort fire RabbitMQ "completed" event for downstream consumers
+     *   6. Return the document DTO (already READY when this returns)
+     *
+     * Synchronous because Render free-tier single-instance deployment can't
+     * reliably consume RabbitMQ events (sleeps, no durable consumer process).
+     * Doing the work in-line guarantees the doc is ingested by the time the
+     * upload response returns.
      */
-    @Transactional
     public DocumentDto upload(MultipartFile file,
-                               UUID workspaceId,
-                               UUID uploadedBy) throws Exception {
+                              UUID workspaceId,
+                              UUID uploadedBy) throws Exception {
         // Validate
         validateFile(file);
 
@@ -56,33 +63,45 @@ public class DocumentService {
         String fileType = detectExtension(filename);
         UUID   docId    = UUID.randomUUID();
 
-        // Save metadata (PENDING)
-        Document doc = documentRepository.save(Document.builder()
+        // Save metadata (PENDING) and upload bytes in a short DB transaction
+        Document doc = saveInitialMetadata(docId, workspaceId, uploadedBy,
+                filename, fileType, file.getSize());
+
+        String storageKey = storageService.upload(file, workspaceId, docId);
+        updateStorageKey(doc, storageKey);
+
+        log.info("Document stored: id={} name='{}' size={}B ws={} — starting pipeline",
+                docId, filename, file.getSize(), workspaceId);
+
+        // Run the pipeline synchronously — throws on failure (mapped to 500 by handler)
+        IngestionRequestedEvent event = IngestionRequestedEvent.of(
+                docId, workspaceId, uploadedBy, storageKey, filename, fileType);
+        pipelineService.process(event);
+
+        // Re-fetch so caller sees the final READY status + chunk_count
+        Document refreshed = documentRepository.findById(docId).orElse(doc);
+        return toDto(refreshed);
+    }
+
+    @Transactional
+    protected Document saveInitialMetadata(UUID docId, UUID workspaceId, UUID uploadedBy,
+                                           String filename, String fileType, long size) {
+        return documentRepository.save(Document.builder()
                 .id(docId)
                 .workspaceId(workspaceId)
                 .uploadedBy(uploadedBy)
                 .filename(filename)
                 .fileType(fileType)
-                .fileSize(file.getSize())
-                .storageKey("pending")          // updated after upload
+                .fileSize(size)
+                .storageKey("pending")
                 .status(DocumentStatus.PENDING)
                 .build());
+    }
 
-        // Upload to MinIO
-        String storageKey = storageService.upload(file, workspaceId, docId);
+    @Transactional
+    protected void updateStorageKey(Document doc, String storageKey) {
         doc.setStorageKey(storageKey);
         documentRepository.save(doc);
-
-        // Publish async ingestion request
-        eventPublisher.publishIngestionRequest(
-                IngestionRequestedEvent.of(
-                        docId, workspaceId, uploadedBy,
-                        storageKey, filename, fileType));
-
-        log.info("Document uploaded: id={} name='{}' size={}B ws={}",
-                docId, filename, file.getSize(), workspaceId);
-
-        return toDto(doc);
     }
 
     // ── Query ─────────────────────────────────────────────────────────────────
@@ -158,19 +177,19 @@ public class DocumentService {
         if (!supported.contains(ext)) {
             throw new IllegalArgumentException(
                     "Unsupported file type: ." + ext +
-                    ". Supported: " + supportedTypesConfig);
+                            ". Supported: " + supportedTypesConfig);
         }
         // Also validate MIME content type when available
         String contentType = file.getContentType();
         if (contentType != null) {
             Set<String> allowedMimes = Set.of(
-                "application/pdf", "application/msword",
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                "text/plain", "text/html", "text/csv", "text/markdown",
-                "application/json", "application/xml", "text/xml", "application/rtf",
-                "application/octet-stream" // fallback for unknown types
+                    "application/pdf", "application/msword",
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    "text/plain", "text/html", "text/csv", "text/markdown",
+                    "application/json", "application/xml", "text/xml", "application/rtf",
+                    "application/octet-stream" // fallback for unknown types
             );
             if (!allowedMimes.contains(contentType)) {
                 log.warn("Suspicious MIME type '{}' for file '{}'", contentType, file.getOriginalFilename());
