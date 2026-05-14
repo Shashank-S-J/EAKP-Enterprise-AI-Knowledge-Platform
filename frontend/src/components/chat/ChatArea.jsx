@@ -61,6 +61,12 @@ export default function ChatArea({ onNewConv }) {
     const [pendingUploads, setPendingUploads] = useState([]);
     // Documents already saved on the server for this conversation.
     const [attachedDocs, setAttachedDocs] = useState([]);
+    // ChatGPT-style: doc IDs uploaded in THIS session that haven't yet been
+    // "claimed" by a sent message. They appear in the composer; once Send is
+    // pressed they're stamped onto that user message bubble and removed here.
+    // Follow-up questions still see them because the server-side RAG pipeline
+    // pulls every doc attached to the conversation regardless of this flag.
+    const [unsentDocIds, setUnsentDocIds] = useState([]);
     const [thinking, setThinking] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [editText, setEditText] = useState("");
@@ -134,6 +140,9 @@ export default function ChatArea({ onNewConv }) {
     }, []);
     useEffect(() => {
         loadAttachedDocs(activeConversationId);
+        // Switching chats clears the "un-sent" tracking — those flags only matter
+        // for in-session uploads on the active conversation.
+        setUnsentDocIds([]);
     }, [activeConversationId, loadAttachedDocs]);
 
     // Poll any pending docs (PENDING/PROCESSING) every 3s until READY/FAILED,
@@ -194,8 +203,24 @@ export default function ChatArea({ onNewConv }) {
                 role: "USER",
                 content: msg,
                 sources: [],
+                // Stamp the docs that were attached at the moment Send was pressed
+                // onto the message bubble (ChatGPT-style). Composer chips then clear,
+                // but the conversation’s server-side context still includes these for
+                // follow-up questions.
+                attachments: unsentDocIds
+                    .map((id) => attachedDocs.find((d) => d.id === id))
+                    .filter(Boolean)
+                    .map((d) => ({
+                        id: d.id,
+                        filename: d.filename,
+                        fileType: d.fileType,
+                        status: d.status,
+                    })),
                 createdAt: new Date().toISOString(),
             });
+            // "Un-sent" docs are now claimed by the message above — stop showing
+            // them in the composer.
+            setUnsentDocIds([]);
             setInput("");
             setSending(false);
             setThinking(true);
@@ -258,6 +283,8 @@ export default function ChatArea({ onNewConv }) {
             clearStream,
             loadConversations,
             onNewConv,
+            unsentDocIds,
+            attachedDocs,
         ],
     );
 
@@ -399,6 +426,9 @@ export default function ChatArea({ onNewConv }) {
                         );
                         if (dto && dto.id) {
                             setAttachedDocs((prev) => [dto, ...prev]);
+                            // Mark this doc as "un-sent" so it shows in the composer until
+                            // the next Send pins it to a user message.
+                            setUnsentDocIds((prev) => [...prev, dto.id]);
                         } else {
                             loadAttachedDocs(convId);
                         }
@@ -429,6 +459,7 @@ export default function ChatArea({ onNewConv }) {
             if (!ok) return;
             const prev = attachedDocs;
             setAttachedDocs((d) => d.filter((x) => x.id !== docId));
+            setUnsentDocIds((u) => u.filter((id) => id !== docId));
             try {
                 await docsApi.delete(docId);
             } catch (e) {
@@ -672,7 +703,7 @@ export default function ChatArea({ onNewConv }) {
                         </button>
                     </div>
                 )}
-                {(pendingUploads.length > 0 || attachedDocs.length > 0) && (
+                {(pendingUploads.length > 0 || unsentDocIds.length > 0) && (
                     <div
                         className="composer-attachments"
                         role="list"
@@ -762,77 +793,79 @@ export default function ChatArea({ onNewConv }) {
                                 </div>
                             );
                         })}
-                        {attachedDocs.map((d) => {
-                            const ext = (d.fileType || "").toLowerCase();
-                            const iconMap = {
-                                pdf: "picture_as_pdf",
-                                docx: "description",
-                                doc: "description",
-                                txt: "article",
-                                md: "article",
-                                csv: "table_view",
-                                xlsx: "table_view",
-                                xls: "table_view",
-                                json: "data_object",
-                                html: "code",
-                                pptx: "slideshow",
-                                ppt: "slideshow",
-                            };
-                            const icon = iconMap[ext] || "attach_file";
-                            const isProcessing =
-                                d.status === "PENDING" || d.status === "PROCESSING";
-                            const isFailed = d.status === "FAILED";
-                            const isReady = d.status === "READY";
-                            const sub = isProcessing
-                                ? "Processing…"
-                                : isFailed
-                                    ? "Failed"
-                                    : isReady
-                                        ? "Ready"
-                                        : d.status;
-                            return (
-                                <div
-                                    key={d.id}
-                                    className={`composer-attachment-card ext-${ext}${isProcessing ? " is-uploading" : ""}${isReady ? " is-done" : ""}${isFailed ? " is-failed" : ""}`}
-                                    role="listitem"
-                                >
-                                    <div className="composer-attachment-icon">
+                        {attachedDocs
+                            .filter((d) => unsentDocIds.includes(d.id))
+                            .map((d) => {
+                                const ext = (d.fileType || "").toLowerCase();
+                                const iconMap = {
+                                    pdf: "picture_as_pdf",
+                                    docx: "description",
+                                    doc: "description",
+                                    txt: "article",
+                                    md: "article",
+                                    csv: "table_view",
+                                    xlsx: "table_view",
+                                    xls: "table_view",
+                                    json: "data_object",
+                                    html: "code",
+                                    pptx: "slideshow",
+                                    ppt: "slideshow",
+                                };
+                                const icon = iconMap[ext] || "attach_file";
+                                const isProcessing =
+                                    d.status === "PENDING" || d.status === "PROCESSING";
+                                const isFailed = d.status === "FAILED";
+                                const isReady = d.status === "READY";
+                                const sub = isProcessing
+                                    ? "Processing…"
+                                    : isFailed
+                                        ? "Failed"
+                                        : isReady
+                                            ? "Ready"
+                                            : d.status;
+                                return (
+                                    <div
+                                        key={d.id}
+                                        className={`composer-attachment-card ext-${ext}${isProcessing ? " is-uploading" : ""}${isReady ? " is-done" : ""}${isFailed ? " is-failed" : ""}`}
+                                        role="listitem"
+                                    >
+                                        <div className="composer-attachment-icon">
                     <span className="material-symbols-outlined filled">
                       {isReady ? "check_circle" : isFailed ? "error" : icon}
                     </span>
-                                    </div>
-                                    <div className="composer-attachment-meta">
-                                        <div
-                                            className="composer-attachment-name"
-                                            title={d.filename}
-                                        >
-                                            {d.filename}
                                         </div>
-                                        <div className="composer-attachment-sub">
+                                        <div className="composer-attachment-meta">
+                                            <div
+                                                className="composer-attachment-name"
+                                                title={d.filename}
+                                            >
+                                                {d.filename}
+                                            </div>
+                                            <div className="composer-attachment-sub">
                       <span className="composer-attachment-ext">
                         {(ext || "FILE").toUpperCase()}
                       </span>
-                                            <span
-                                                className="composer-attachment-dot"
-                                                aria-hidden="true"
-                                            >
+                                                <span
+                                                    className="composer-attachment-dot"
+                                                    aria-hidden="true"
+                                                >
                         •
                       </span>
-                                            <span className="composer-attachment-size">{sub}</span>
+                                                <span className="composer-attachment-size">{sub}</span>
+                                            </div>
                                         </div>
+                                        <button
+                                            type="button"
+                                            className="composer-attachment-remove"
+                                            onClick={() => removeAttachedDoc(d.id, d.filename)}
+                                            aria-label={`Remove ${d.filename}`}
+                                            title="Remove from this chat"
+                                        >
+                                            <span className="material-symbols-outlined">close</span>
+                                        </button>
                                     </div>
-                                    <button
-                                        type="button"
-                                        className="composer-attachment-remove"
-                                        onClick={() => removeAttachedDoc(d.id, d.filename)}
-                                        aria-label={`Remove ${d.filename}`}
-                                        title="Remove from this chat"
-                                    >
-                                        <span className="material-symbols-outlined">close</span>
-                                    </button>
-                                </div>
-                            );
-                        })}
+                                );
+                            })}
                     </div>
                 )}
                 <div
