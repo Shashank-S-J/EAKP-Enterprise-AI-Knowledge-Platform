@@ -144,10 +144,7 @@ export default function ChatArea({ onNewConv }) {
             (d) => d.status === "PENDING" || d.status === "PROCESSING",
         );
         if (!stillProcessing) return;
-        const t = setInterval(
-            () => loadAttachedDocs(activeConversationId),
-            3000,
-        );
+        const t = setInterval(() => loadAttachedDocs(activeConversationId), 3000);
         return () => clearInterval(t);
     }, [activeConversationId, attachedDocs, loadAttachedDocs]);
 
@@ -801,11 +798,7 @@ export default function ChatArea({ onNewConv }) {
                                 >
                                     <div className="composer-attachment-icon">
                     <span className="material-symbols-outlined filled">
-                      {isReady
-                          ? "check_circle"
-                          : isFailed
-                              ? "error"
-                              : icon}
+                      {isReady ? "check_circle" : isFailed ? "error" : icon}
                     </span>
                                     </div>
                                     <div className="composer-attachment-meta">
@@ -879,7 +872,7 @@ export default function ChatArea({ onNewConv }) {
                         className="input-btn"
                         onClick={() => fileInputRef.current?.click()}
                         title="Attach documents"
-                        disabled={streaming || uploading}
+                        disabled={streaming}
                     >
                         <span className="material-symbols-outlined">attach_file</span>
                     </button>
@@ -894,7 +887,7 @@ export default function ChatArea({ onNewConv }) {
                         aria-label="Chat message input"
                         rows={1}
                         maxLength={10000}
-                        disabled={uploading || streaming || !online}
+                        disabled={streaming || !online}
                     />
                     <div className="input-actions">
                         {streaming ? (
@@ -909,16 +902,10 @@ export default function ChatArea({ onNewConv }) {
                             <button
                                 className="send-btn"
                                 onClick={() => sendMessage()}
-                                disabled={
-                                    (!input.trim() && !files.length) || sending || uploading
-                                }
-                                title={uploading ? "Uploading attachments…" : "Send message"}
+                                disabled={!input.trim() || sending}
+                                title="Send message"
                             >
-                                {uploading ? (
-                                    <span className="send-btn-spinner" aria-hidden="true" />
-                                ) : (
-                                    <span className="material-symbols-outlined filled">send</span>
-                                )}
+                                <span className="material-symbols-outlined filled">send</span>
                             </button>
                         )}
                     </div>
