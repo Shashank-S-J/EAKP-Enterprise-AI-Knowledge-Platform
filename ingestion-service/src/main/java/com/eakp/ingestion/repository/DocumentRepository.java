@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -26,6 +27,7 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
     long countByWorkspaceIdAndStatus(UUID workspaceId, DocumentStatus status);
 
     @Modifying
+    @Transactional
     @Query("UPDATE Document d SET d.status = :status, d.errorMsg = :error, " +
            "d.chunkCount = :chunkCount WHERE d.id = :id")
     void updateStatus(UUID id, DocumentStatus status,
