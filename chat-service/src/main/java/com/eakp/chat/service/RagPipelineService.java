@@ -18,21 +18,22 @@ import java.util.*;
  * Core RAG retrieval pipeline.
  *
  * Flow:
- *   1. Embed the user query
- *   2. Run hybrid search (vector ANN + BM25 full-text)
- *   3. Fuse results with Reciprocal Rank Fusion (RRF)
- *   4. Re-rank top candidates with a cross-encoder
- *   5. Return final top-K chunks
+ * 1. Embed the user query
+ * 2. Run hybrid search (vector ANN + BM25 full-text)
+ * 3. Fuse results with Reciprocal Rank Fusion (RRF)
+ * 4. Re-rank top candidates with a cross-encoder
+ * 5. Return final top-K chunks
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class RagPipelineService {
 
-    private final VectorStore     vectorStore;
-    private final EmbeddingModel  embeddingModel;
-    private final JdbcTemplate    jdbcTemplate;
+    private final VectorStore vectorStore;
+    private final EmbeddingModel embeddingModel;
+    private final JdbcTemplate jdbcTemplate;
     private final ReRankingService reRankingService;
+    private final AttachedDocumentService attachedDocumentService;
 
     @Value("${app.rag.top-k-retrieve:20}")
     private int topKRetrieve;
@@ -51,7 +52,20 @@ public class RagPipelineService {
      */
     @Timed(value = "rag.retrieve.latency", description = "RAG retrieve pipeline latency")
     public List<RetrievedChunk> retrieve(String query, UUID workspaceId) {
-        log.info("RAG retrieve: query='{}' workspace={}", query, workspaceId);
+        return retrieve(query, workspaceId, null);
+    }
+
+    /**
+     * Conversation-aware retrieval. When {@code conversationId} is non-null and
+     * the conversation has attached documents (ChatGPT-style uploads), those
+     * documents' chunks are <strong>boosted</strong> to the front of the
+     * candidate list before re-ranking. Workspace-wide chunks remain eligible
+     * as fallback context.
+     */
+    @Timed(value = "rag.retrieve.latency", description = "RAG retrieve pipeline latency")
+    public List<RetrievedChunk> retrieve(String query, UUID workspaceId, UUID conversationId) {
+        log.info("RAG retrieve: query='{}' workspace={} conversation={}",
+                query, workspaceId, conversationId);
 
         // Diagnostic: how many chunks exist at all for this workspace?
         Integer totalChunks = jdbcTemplate.queryForObject(
@@ -62,6 +76,16 @@ public class RagPipelineService {
                 Integer.class, workspaceId.toString());
         log.info("Workspace {} has {} chunks ({} with embeddings) in DB",
                 workspaceId, totalChunks, chunksWithEmbedding);
+
+        // Resolve attached docs (if any) so we can boost them
+        Set<String> attachedDocIds = conversationId == null
+                ? Set.of()
+                : attachedDocumentService.attachedDocumentIds(conversationId, workspaceId)
+                .stream().map(UUID::toString).collect(java.util.stream.Collectors.toSet());
+        if (!attachedDocIds.isEmpty()) {
+            log.info("Conversation {} has {} attached document(s) — boosting their chunks",
+                    conversationId, attachedDocIds.size());
+        }
 
         // 1. Vector search (semantic)
         List<ScoredChunk> vectorResults = vectorSearch(query, workspaceId);
@@ -75,12 +99,36 @@ public class RagPipelineService {
         // 3. Reciprocal Rank Fusion
         List<ScoredChunk> fused = reciprocalRankFusion(vectorResults, textResults);
 
+        // 3a. Boost: pull attached-document chunks to the front while preserving
+        //     their relative RRF order; non-attached chunks follow as fallback.
+        if (!attachedDocIds.isEmpty()) {
+            List<ScoredChunk> attached  = new ArrayList<>();
+            List<ScoredChunk> remaining = new ArrayList<>();
+            for (ScoredChunk c : fused) {
+                if (c.documentId() != null && attachedDocIds.contains(c.documentId())) {
+                    attached.add(c);
+                } else {
+                    remaining.add(c);
+                }
+            }
+            // If hybrid search didn't find any chunks from the attached docs at
+            // all, query them directly so freshly-uploaded files are always
+            // visible to the LLM (vector embeddings can take a moment to land).
+            if (attached.isEmpty()) {
+                attached = chunksForDocuments(attachedDocIds, workspaceId);
+            }
+            fused = new ArrayList<>(attached.size() + remaining.size());
+            fused.addAll(attached);
+            fused.addAll(remaining);
+        }
+
         // 3b. Fallback: if hybrid search found nothing but the workspace HAS
         // chunks, fall back to returning the most recent chunks. This makes
         // resume-style "tell me about this person" queries work even when
         // the embedding similarity is low.
         if (fused.isEmpty() && chunksWithEmbedding != null && chunksWithEmbedding > 0) {
-            log.warn("Hybrid search returned 0 chunks for workspace={} despite {} chunks in DB — falling back to recent chunks",
+            log.warn(
+                    "Hybrid search returned 0 chunks for workspace={} despite {} chunks in DB — falling back to recent chunks",
                     workspaceId, chunksWithEmbedding);
             fused = recentChunksFallback(workspaceId);
         }
@@ -94,17 +142,52 @@ public class RagPipelineService {
         return reranked.stream().limit(topKRerank).toList();
     }
 
+    /** Direct fetch of every chunk for a given set of document IDs (workspace-scoped). */
+    private List<ScoredChunk> chunksForDocuments(Set<String> docIds, UUID workspaceId) {
+        if (docIds.isEmpty()) return List.of();
+        String inList = String.join(",",
+                docIds.stream().map(id -> "'" + id.replace("'", "") + "'").toList());
+        String sql = """
+                SELECT id::text, content,
+                       metadata->>'source'      AS source,
+                       metadata->>'document_id' AS document_id
+                FROM document_chunks
+                WHERE workspace_id = ?::uuid
+                  AND document_id IN (%s)
+                ORDER BY chunk_index ASC
+                LIMIT ?
+                """.formatted(inList);
+        try {
+            List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                    sql, workspaceId.toString(), topKRetrieve);
+            List<ScoredChunk> out = new ArrayList<>(rows.size());
+            for (int i = 0; i < rows.size(); i++) {
+                Map<String, Object> r = rows.get(i);
+                out.add(new ScoredChunk(
+                        String.valueOf(r.get("id")),
+                        String.valueOf(r.get("content")),
+                        String.valueOf(r.get("source")),
+                        String.valueOf(r.get("document_id")),
+                        i + 1, 0));
+            }
+            return out;
+        } catch (Exception e) {
+            log.warn("Direct chunk fetch for attached docs failed: {}", e.getMessage());
+            return List.of();
+        }
+    }
+
     /** Last-resort fallback: return the most recent chunks for the workspace. */
     private List<ScoredChunk> recentChunksFallback(UUID workspaceId) {
         String sql = """
-            SELECT id::text, content,
-                   metadata->>'source'      AS source,
-                   metadata->>'document_id' AS document_id
-            FROM document_chunks
-            WHERE workspace_id = ?::uuid
-            ORDER BY created_at DESC
-            LIMIT ?
-            """;
+                SELECT id::text, content,
+                       metadata->>'source'      AS source,
+                       metadata->>'document_id' AS document_id
+                FROM document_chunks
+                WHERE workspace_id = ?::uuid
+                ORDER BY created_at DESC
+                LIMIT ?
+                """;
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
                 sql, workspaceId.toString(), topKRetrieve);
         List<ScoredChunk> results = new ArrayList<>();
@@ -150,8 +233,8 @@ public class RagPipelineService {
                     doc.getFormattedContent(),
                     extractMeta(doc, "source"),
                     extractMeta(doc, "document_id"),
-                    i + 1,   // rank (1-based)
-                    0         // text rank (not applicable here)
+                    i + 1, // rank (1-based)
+                    0 // text rank (not applicable here)
             ));
         }
         log.debug("Vector search returned {} results", results.size());
@@ -162,22 +245,22 @@ public class RagPipelineService {
 
     private List<ScoredChunk> fullTextSearch(String query, UUID workspaceId) {
         String sql = """
-            SELECT
-                id::text,
-                content,
-                metadata->>'source'      AS source,
-                metadata->>'document_id' AS document_id,
-                ts_rank(
-                    to_tsvector('english', content),
-                    plainto_tsquery('english', ?)
-                ) AS score
-            FROM document_chunks
-            WHERE workspace_id = ?::uuid
-              AND to_tsvector('english', content)
-                  @@ plainto_tsquery('english', ?)
-            ORDER BY score DESC
-            LIMIT ?
-            """;
+                SELECT
+                    id::text,
+                    content,
+                    metadata->>'source'      AS source,
+                    metadata->>'document_id' AS document_id,
+                    ts_rank(
+                        to_tsvector('english', content),
+                        plainto_tsquery('english', ?)
+                    ) AS score
+                FROM document_chunks
+                WHERE workspace_id = ?::uuid
+                  AND to_tsvector('english', content)
+                      @@ plainto_tsquery('english', ?)
+                ORDER BY score DESC
+                LIMIT ?
+                """;
 
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
                 sql, query, workspaceId.toString(), query, topKRetrieve);
@@ -190,8 +273,8 @@ public class RagPipelineService {
                     (String) row.get("content"),
                     (String) row.get("source"),
                     (String) row.get("document_id"),
-                    0,          // vector rank (not applicable)
-                    i + 1       // text rank (1-based)
+                    0, // vector rank (not applicable)
+                    i + 1 // text rank (1-based)
             ));
         }
         log.debug("Full-text search returned {} results", results.size());
@@ -201,7 +284,7 @@ public class RagPipelineService {
     // ── Reciprocal Rank Fusion ────────────────────────────────────────────────
 
     /**
-     * RRF score = Σ 1 / (k + rank_i)   where k=60 (standard constant).
+     * RRF score = Σ 1 / (k + rank_i) where k=60 (standard constant).
      * Merges vector and text results into a single ranked list.
      */
     private List<ScoredChunk> reciprocalRankFusion(
@@ -209,14 +292,14 @@ public class RagPipelineService {
             List<ScoredChunk> textResults) {
 
         final int K = 60;
-        Map<String, double[]> scoreMap = new HashMap<>();  // id -> [rrfScore, idx]
+        Map<String, double[]> scoreMap = new HashMap<>(); // id -> [rrfScore, idx]
         Map<String, ScoredChunk> chunkMap = new HashMap<>();
 
         // Add vector ranks
         for (ScoredChunk chunk : vectorResults) {
             double rrf = 1.0 / (K + chunk.vectorRank());
             scoreMap.computeIfAbsent(chunk.id(),
-                    id -> new double[]{0.0})[0] += rrf;
+                    id -> new double[] { 0.0 })[0] += rrf;
             chunkMap.putIfAbsent(chunk.id(), chunk);
         }
 
@@ -224,7 +307,7 @@ public class RagPipelineService {
         for (ScoredChunk chunk : textResults) {
             double rrf = 1.0 / (K + chunk.textRank());
             scoreMap.computeIfAbsent(chunk.id(),
-                    id -> new double[]{0.0})[0] += rrf;
+                    id -> new double[] { 0.0 })[0] += rrf;
             chunkMap.putIfAbsent(chunk.id(), chunk);
         }
 
@@ -249,17 +332,16 @@ public class RagPipelineService {
             String content,
             String source,
             String documentId,
-            int    vectorRank,
-            int    textRank
-    ) {}
+            int vectorRank,
+            int textRank) {
+    }
 
     public record RetrievedChunk(
             String id,
             String content,
             String source,
             String documentId,
-            double relevanceScore
-    ) {
+            double relevanceScore) {
         /** Format for injection into the LLM prompt. */
         public String toPromptString() {
             return "[Source: %s]\n%s".formatted(source, content);

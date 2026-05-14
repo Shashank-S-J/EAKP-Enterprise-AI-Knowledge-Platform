@@ -17,6 +17,11 @@ public class Document {
     @Column(name = "workspace_id", nullable = false)
     private UUID workspaceId;
 
+    /** Optional: when set, this document is scoped to a single conversation
+     *  (ChatGPT-style attachment). NULL means workspace-wide. */
+    @Column(name = "conversation_id")
+    private UUID conversationId;
+
     @Column(name = "uploaded_by", nullable = false)
     private UUID uploadedBy;
 

@@ -37,6 +37,7 @@ public class IngestionController {
     @ResponseStatus(HttpStatus.ACCEPTED)
     public DocumentDto upload(
             @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "conversationId", required = false) UUID conversationId,
             Authentication auth) throws Exception {
 
         UUID workspaceId = workspaceId(auth);
@@ -47,10 +48,10 @@ public class IngestionController {
             throw new IllegalArgumentException("File is required");
         }
 
-        log.info("Upload request: file='{}' size={}B ws={}",
-                file.getOriginalFilename(), file.getSize(), workspaceId);
+        log.info("Upload request: file='{}' size={}B ws={} conv={}",
+                file.getOriginalFilename(), file.getSize(), workspaceId, conversationId);
 
-        return documentService.upload(file, workspaceId, userId);
+        return documentService.upload(file, workspaceId, userId, conversationId);
     }
 
     /**
