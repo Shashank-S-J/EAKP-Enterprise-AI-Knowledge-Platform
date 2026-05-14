@@ -344,10 +344,11 @@ export function streamChat(conversationId, message, onToken, onDone, onError) {
 export const documents = {
     list: () => request("/api/v1/documents"),
     get: (id) => request(`/api/v1/documents/${id}`),
-    upload: async (file, onProgress) => {
+    upload: async (file, onProgress, conversationId) => {
         const makeForm = () => {
             const f = new FormData();
             f.append("file", file);
+            if (conversationId) f.append("conversationId", conversationId);
             return f;
         };
         const doUpload = async (retried = false) => {
@@ -370,7 +371,7 @@ export const documents = {
                             tryRefresh().then((refreshed) => {
                                 if (refreshed) {
                                     documents
-                                        .upload(file, onProgress)
+                                        .upload(file, onProgress, conversationId)
                                         .then(resolve)
                                         .catch(reject);
                                 } else {
@@ -400,7 +401,9 @@ export const documents = {
                     };
                     xhr.onerror = () => reject(new Error("Network error during upload"));
                     xhr.ontimeout = () =>
-                        reject(new Error("Upload timed out — the server is taking too long"));
+                        reject(
+                            new Error("Upload timed out — the server is taking too long"),
+                        );
                     xhr.send(makeForm());
                 });
             }

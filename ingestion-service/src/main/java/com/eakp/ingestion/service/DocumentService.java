@@ -60,7 +60,8 @@ public class DocumentService {
      */
     public DocumentDto upload(MultipartFile file,
                               UUID workspaceId,
-                              UUID uploadedBy) throws Exception {
+                              UUID uploadedBy,
+                              UUID conversationId) throws Exception {
         // Validate
         validateFile(file);
 
@@ -70,13 +71,13 @@ public class DocumentService {
 
         // Save metadata (PENDING) and upload bytes in a short DB transaction
         Document doc = saveInitialMetadata(docId, workspaceId, uploadedBy,
-                filename, fileType, file.getSize());
+                filename, fileType, file.getSize(), conversationId);
 
         String storageKey = storageService.upload(file, workspaceId, docId);
         updateStorageKey(doc, storageKey);
 
-        log.info("Document stored: id={} name='{}' size={}B ws={} — dispatching pipeline (async)",
-                docId, filename, file.getSize(), workspaceId);
+        log.info("Document stored: id={} name='{}' size={}B ws={} conv={} — dispatching pipeline (async)",
+                docId, filename, file.getSize(), workspaceId, conversationId);
 
         // Fire-and-forget: pipeline runs on a virtual thread, request returns now.
         asyncPipelineRunner.submit(IngestionRequestedEvent.of(
@@ -88,11 +89,12 @@ public class DocumentService {
 
     @Transactional
     protected Document saveInitialMetadata(UUID docId, UUID workspaceId, UUID uploadedBy,
-                                           String filename, String fileType, long size) {
+                                           String filename, String fileType, long size, UUID conversationId) {
         return documentRepository.save(Document.builder()
                 .id(docId)
                 .workspaceId(workspaceId)
                 .uploadedBy(uploadedBy)
+                .conversationId(conversationId)
                 .filename(filename)
                 .fileType(fileType)
                 .fileSize(size)
@@ -223,6 +225,7 @@ public class DocumentService {
                 d.getStatus().name(),
                 d.getChunkCount(),
                 d.getErrorMsg(),
+                d.getConversationId() != null ? d.getConversationId().toString() : null,
                 d.getCreatedAt(),
                 d.getUpdatedAt());
     }

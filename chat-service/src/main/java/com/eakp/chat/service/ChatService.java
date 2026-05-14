@@ -47,6 +47,8 @@ public class ChatService {
     private final HallucinationGuardService   hallucinationGuard;
     private final AiMetricsService            metrics;
     private final QueryRewriteService         queryRewriter;
+    private final AttachedDocumentService     attachedDocuments;
+    private final CrossConversationSearchService crossConvSearch;
 
     @Value("${app.rag.max-context-chars:8000}")
     private int maxContextChars;
@@ -111,7 +113,7 @@ public class ChatService {
             // 3 + 4: Retrieve context and history
             return Mono.fromCallable(() -> {
                         List<RetrievedChunk> context =
-                                ragPipeline.retrieve(effectiveQuery, workspaceId);
+                                ragPipeline.retrieve(effectiveQuery, workspaceId, conversationId);
                         metrics.recordChunksRetrieved(context.size());
                         return context;
                     })
@@ -129,8 +131,33 @@ public class ChatService {
                         // Limit context size to prevent LLM truncation
                         List<RetrievedChunk> trimmedContext = trimContext(context);
 
+                        // Files explicitly attached to this conversation — lets the LLM
+                        // resolve references like "the resume" / "that PDF" without
+                        // needing the user to repeat the filename.
+                        List<String> attachedFiles =
+                                attachedDocuments.attachedFilenames(conversationId, workspaceId);
+
+                        // Documents from OTHER chats that the retrieval pipeline
+                        // surfaced as relevant. The LLM uses these to proactively
+                        // suggest "I also have <X> on this topic — want me to use it?".
+                        java.util.Set<String> attachedSet = new java.util.HashSet<>(attachedFiles);
+                        java.util.List<String> relatedFiles = trimmedContext.stream()
+                                .map(RetrievedChunk::source)
+                                .filter(java.util.Objects::nonNull)
+                                .filter(s -> !"unknown".equals(s))
+                                .filter(s -> !attachedSet.contains(s))
+                                .distinct()
+                                .toList();
+
+                        // Cross-conversation memory: snippets from earlier chats in
+                        // the same workspace. Powers "summarize yesterday's discussion".
+                        java.util.List<CrossConversationSearchService.PastMessage> pastMessages =
+                                crossConvSearch.findRelevantPastMessages(
+                                        effectiveQuery, workspaceId, conversationId);
+
                         // Build the prompt
-                        String systemPrompt = buildSystemPrompt(trimmedContext);
+                        String systemPrompt = buildSystemPrompt(
+                                trimmedContext, attachedFiles, relatedFiles, pastMessages);
                         String userMessage  = buildUserMessage(effectiveQuery, history);
 
                         final List<RetrievedChunk> capturedContext   = trimmedContext;
@@ -226,16 +253,18 @@ public class ChatService {
                         workspaceId, grounding.unsupportedClaims());
             }
 
-            // Semantic cache write (only cache high-confidence answers)
-            if (grounding.confidence() >= lowConfidenceThreshold) {
+            // Semantic cache write — only when we had real context AND
+            // the answer is high-confidence. Caching empty-context replies
+            // poisons future lookups with "no documents" boilerplate.
+            if (!context.isEmpty() && grounding.confidence() >= lowConfidenceThreshold) {
                 List<String> sources = context.stream()
                         .map(RetrievedChunk::source)
                         .distinct()
                         .collect(Collectors.toList());
                 semanticCache.store(effectiveQuery, workspaceId, answer, sources);
             } else {
-                log.info("Skipping cache for low-confidence answer ({})",
-                        grounding.confidence());
+                log.info("Skipping cache (context={}, confidence={})",
+                        context.size(), grounding.confidence());
             }
 
             // Persist messages to DB
@@ -275,38 +304,111 @@ public class ChatService {
 
     // ── Prompt building ───────────────────────────────────────────────────────
 
-    private String buildSystemPrompt(List<RetrievedChunk> context) {
-        if (context.isEmpty()) {
+    private String buildSystemPrompt(List<RetrievedChunk> context,
+                                     List<String> attachedFiles,
+                                     List<String> relatedFiles,
+                                     List<CrossConversationSearchService.PastMessage> pastMessages) {
+        boolean hasContext      = !context.isEmpty();
+        boolean hasPast         = pastMessages != null && !pastMessages.isEmpty();
+
+        if (!hasContext && !hasPast) {
+            // Keep this short and factual — never invent metaphors or
+            // multi-paragraph explanations. The user just needs to know
+            // the retrieval pipeline returned no relevant chunks.
             return """
-                You are a helpful assistant. No documents have been uploaded
-                to this workspace yet. Politely inform the user and suggest
-                they upload documents first.
+                You are a knowledge assistant. No relevant document content
+                was retrieved for this question. Respond with exactly this
+                sentence and nothing else:
+
+                "I couldn't find anything relevant in the uploaded documents \
+                for that question. If you just uploaded a file, please wait a \
+                few seconds for ingestion to finish and try again, or rephrase \
+                your question."
                 """;
         }
 
-        String contextBlock = context.stream()
+        String contextBlock = hasContext
+                ? context.stream()
                 .map(RetrievedChunk::toPromptString)
-                .collect(Collectors.joining("\n\n---\n\n"));
+                .collect(Collectors.joining("\n\n---\n\n"))
+                : "(no document chunks retrieved for this question)";
+
+        // When the user attached files inline (ChatGPT-style), tell the LLM
+        // their filenames so it can resolve casual references ("the resume",
+        // "that PDF", "the spec I shared") without needing exact names.
+        String attachedBlock = (attachedFiles == null || attachedFiles.isEmpty())
+                ? ""
+                : """
+                    ATTACHED TO THIS CONVERSATION (treat references like \
+                    "the resume", "that PDF", "the document", "this file" \
+                    as referring to these, in order of upload):
+                    %s
+
+                    """.formatted(attachedFiles.stream()
+                .map(f -> "  - " + f)
+                .collect(Collectors.joining("\n")));
+
+        // Documents from elsewhere in the workspace that look relevant. The
+        // LLM should mention these proactively (Rule 9) rather than silently
+        // using them — mimics Claude's "I notice you have <doc>, want me to
+        // include it?" behaviour.
+        String relatedBlock = (relatedFiles == null || relatedFiles.isEmpty())
+                ? ""
+                : """
+                    POTENTIALLY RELATED DOCUMENTS (uploaded earlier in OTHER \
+                    chats, not currently attached — only mention if directly \
+                    relevant to the user's question):
+                    %s
+
+                    """.formatted(relatedFiles.stream()
+                .map(f -> "  - " + f)
+                .collect(Collectors.joining("\n")));
+
+        // Snippets from earlier conversations (Postgres FTS), so queries like
+        // "summarize yesterday's discussion" or "the issue we talked about
+        // last week" can ground on real past content rather than guessing.
+        String pastBlock = (!hasPast)
+                ? ""
+                : """
+                    RECENT RELATED CONVERSATIONS (snippets from this \
+                    workspace's earlier chats, newest first):
+                    %s
+
+                    """.formatted(pastMessages.stream()
+                .map(CrossConversationSearchService.PastMessage::toPromptLine)
+                .collect(Collectors.joining("\n")));
 
         return """
-            You are an expert knowledge assistant that answers questions using
-            ONLY the provided CONTEXT below. You are precise and thorough.
+            You are an expert knowledge assistant for this workspace. You
+            answer using ONLY the CONTEXT, RELATED DOCUMENTS, and RECENT
+            RELATED CONVERSATIONS provided below. You are precise and
+            thorough.
 
-            Rules:
-            1. Answer based SOLELY on the CONTEXT. Never use outside knowledge.
-            2. Cite EVERY factual claim with [Source: filename] immediately after the claim.
-            3. If the answer is partially in the context, answer what you can and explicitly
-               state what information is missing.
-            4. If the answer is NOT in the context at all, respond EXACTLY with:
-               "I don't have enough information to answer that based on the uploaded documents."
-            5. Be concise and precise. Avoid repeating the question.
-            6. Use bullet points for multi-part answers.
-            7. If multiple sources contain conflicting information, note the discrepancy.
-            8. Do NOT speculate, infer, or extrapolate beyond what is explicitly stated.
+            %s%s%sRules:
+            1. Answer based SOLELY on the material above. Never use outside knowledge.
+            2. Cite EVERY factual claim with [Source: filename] or, when quoting
+               a past conversation, [Source: chat "<title>", <date>].
+            3. If the user references something with vague language ("the resume",
+               "that PDF", "yesterday's discussion", "the doc we talked about"),
+               resolve it against the ATTACHED / RELATED / RECENT sections.
+            4. If the answer is partially supported, answer what you can and
+               explicitly state what is missing.
+            5. If the answer is NOT supported at all, respond EXACTLY with:
+               "I don't have enough information to answer that based on the
+                uploaded documents or earlier conversations."
+            6. Be concise. Use bullet points for multi-part answers. Avoid
+               repeating the question and avoid metaphors/analogies.
+            7. If multiple sources conflict, note the discrepancy.
+            8. Do NOT speculate, infer, or extrapolate beyond what is stated.
+            9. If you find a POTENTIALLY RELATED DOCUMENT that looks directly
+               relevant but is not currently attached, finish your answer with
+               one line: "I also have <filename> on this topic — want me to
+               include it?".
 
             CONTEXT (%d chunks, %d characters):
             %s
-            """.formatted(context.size(),
+            """.formatted(attachedBlock, relatedBlock, pastBlock,
+                context.size(),
                 context.stream().mapToInt(c -> c.content().length()).sum(),
                 contextBlock);
     }

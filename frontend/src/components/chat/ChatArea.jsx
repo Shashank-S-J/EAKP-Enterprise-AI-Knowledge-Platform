@@ -125,19 +125,40 @@ export default function ChatArea({ onNewConv }) {
             setSending(true);
             let convId = activeConversationId;
 
+            // If the user attached files, create the conversation FIRST so each
+            // upload can be tagged with conversationId — that's what allows the
+            // assistant to refer to "the resume" / "that PDF" without an exact
+            // filename, and what makes per-chat document scoping work.
+            if (files.length > 0 && !convId) {
+                try {
+                    const autoTitle = msg.length > 60 ? msg.slice(0, 57) + "..." : msg;
+                    const conv = await createConversation(autoTitle);
+                    convId = conv.id;
+                    onNewConv(convId);
+                } catch {
+                    toast.error("Failed to create conversation");
+                    setSending(false);
+                    return;
+                }
+            }
+
             if (files.length > 0) {
                 setUploading(true);
                 setUploadProgress(files.map(() => 0));
                 for (let i = 0; i < files.length; i++) {
                     const f = files[i];
                     try {
-                        await docsApi.upload(f, (pct) => {
-                            setUploadProgress((prev) => {
-                                const next = [...prev];
-                                next[i] = pct;
-                                return next;
-                            });
-                        });
+                        await docsApi.upload(
+                            f,
+                            (pct) => {
+                                setUploadProgress((prev) => {
+                                    const next = [...prev];
+                                    next[i] = pct;
+                                    return next;
+                                });
+                            },
+                            convId,
+                        );
                         setUploadProgress((prev) => {
                             const next = [...prev];
                             next[i] = 100;
@@ -583,7 +604,8 @@ export default function ChatArea({ onNewConv }) {
                                     ? `${(sizeKb / 1024).toFixed(1)} MB`
                                     : `${Math.max(1, Math.round(sizeKb))} KB`;
                             const pct = uploadProgress[i];
-                            const isUploading = uploading && pct !== undefined && pct >= 0 && pct < 100;
+                            const isUploading =
+                                uploading && pct !== undefined && pct >= 0 && pct < 100;
                             const isDone = uploading && pct === 100;
                             const isFailed = pct === -1;
                             return (
@@ -720,18 +742,14 @@ export default function ChatArea({ onNewConv }) {
                                 className="send-btn"
                                 onClick={() => sendMessage()}
                                 disabled={
-                                    (!input.trim() && !files.length) ||
-                                    sending ||
-                                    uploading
+                                    (!input.trim() && !files.length) || sending || uploading
                                 }
                                 title={uploading ? "Uploading attachments…" : "Send message"}
                             >
                                 {uploading ? (
                                     <span className="send-btn-spinner" aria-hidden="true" />
                                 ) : (
-                                    <span className="material-symbols-outlined filled">
-                    send
-                  </span>
+                                    <span className="material-symbols-outlined filled">send</span>
                                 )}
                             </button>
                         )}
