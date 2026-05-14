@@ -27,11 +27,12 @@ import java.util.stream.Collectors;
 @Slf4j
 public class DocumentService {
 
-    private final DocumentRepository      documentRepository;
-    private final StorageService          storageService;
+    private final DocumentRepository documentRepository;
+    private final StorageService storageService;
     private final IngestionEventPublisher eventPublisher;
-    private final VectorStoreWriter       vectorStoreWriter;
+    private final VectorStoreWriter vectorStoreWriter;
     private final IngestionPipelineService pipelineService;
+    private final AsyncPipelineRunner asyncPipelineRunner;
 
     @Value("${app.ingestion.supported-types:pdf,docx,doc,txt,md,html,pptx,xlsx,csv,json,xml,rtf,htm}")
     private String supportedTypesConfig;
@@ -39,19 +40,23 @@ public class DocumentService {
     // ── Upload ────────────────────────────────────────────────────────────────
 
     /**
-     * Accept a file upload and run the full ingestion pipeline synchronously.
-     *   1. Validate file type and size
-     *   2. Save metadata to DB (status=PENDING)
-     *   3. Upload raw bytes to object storage
-     *   4. Run the pipeline IN-LINE: parse → chunk → embed → write vectors
-     *      → mark READY (or FAILED on error)
-     *   5. Best-effort fire RabbitMQ "completed" event for downstream consumers
-     *   6. Return the document DTO (already READY when this returns)
+     * Accept a file upload and dispatch the ingestion pipeline asynchronously.
+     * 1. Validate file type and size
+     * 2. Save metadata to DB (status=PENDING)
+     * 3. Upload raw bytes to object storage
+     * 4. Hand the pipeline (parse → chunk → embed → write vectors) to a
+     *    background virtual-thread executor and return the PENDING DTO
+     *    immediately so the HTTP request finishes in seconds, not minutes.
      *
-     * Synchronous because Render free-tier single-instance deployment can't
-     * reliably consume RabbitMQ events (sleeps, no durable consumer process).
-     * Doing the work in-line guarantees the doc is ingested by the time the
-     * upload response returns.
+     * Why async: synchronous ingestion on Render's free tier held the HTTP/2
+     * connection for 30–90 s while embedding ran, which the edge proxy
+     * regularly reset → browsers saw ERR_HTTP2_PROTOCOL_ERROR and
+     * subsequent 403s. With this design the upload returns in ~2–4 s
+     * (S3 PUT + DB insert) and the client polls GET /{id} for readiness.
+     *
+     * Resilience: {@link IngestionRecoveryScheduler} sweeps stuck PENDING
+     * and stale PROCESSING rows every 2 minutes, so a pod crash mid-pipeline
+     * is self-healed on the next pass.
      */
     public DocumentDto upload(MultipartFile file,
                               UUID workspaceId,
@@ -61,7 +66,7 @@ public class DocumentService {
 
         String filename = sanitizeFilename(file.getOriginalFilename());
         String fileType = detectExtension(filename);
-        UUID   docId    = UUID.randomUUID();
+        UUID docId = UUID.randomUUID();
 
         // Save metadata (PENDING) and upload bytes in a short DB transaction
         Document doc = saveInitialMetadata(docId, workspaceId, uploadedBy,
@@ -70,17 +75,15 @@ public class DocumentService {
         String storageKey = storageService.upload(file, workspaceId, docId);
         updateStorageKey(doc, storageKey);
 
-        log.info("Document stored: id={} name='{}' size={}B ws={} — starting pipeline",
+        log.info("Document stored: id={} name='{}' size={}B ws={} — dispatching pipeline (async)",
                 docId, filename, file.getSize(), workspaceId);
 
-        // Run the pipeline synchronously — throws on failure (mapped to 500 by handler)
-        IngestionRequestedEvent event = IngestionRequestedEvent.of(
-                docId, workspaceId, uploadedBy, storageKey, filename, fileType);
-        pipelineService.process(event);
+        // Fire-and-forget: pipeline runs on a virtual thread, request returns now.
+        asyncPipelineRunner.submit(IngestionRequestedEvent.of(
+                docId, workspaceId, uploadedBy, storageKey, filename, fileType));
 
-        // Re-fetch so caller sees the final READY status + chunk_count
-        Document refreshed = documentRepository.findById(docId).orElse(doc);
-        return toDto(refreshed);
+        // Return PENDING — client polls GET /api/v1/documents/{id} for READY.
+        return toDto(doc);
     }
 
     @Transactional
@@ -169,7 +172,7 @@ public class DocumentService {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("File is empty");
         }
-        if (file.getSize() > 50 * 1024 * 1024) {  // 50MB (matches frontend)
+        if (file.getSize() > 50 * 1024 * 1024) { // 50MB (matches frontend)
             throw new IllegalArgumentException("File exceeds 50MB limit");
         }
         String ext = detectExtension(file.getOriginalFilename());
@@ -198,12 +201,14 @@ public class DocumentService {
     }
 
     private String detectExtension(String filename) {
-        if (filename == null || !filename.contains(".")) return "unknown";
+        if (filename == null || !filename.contains("."))
+            return "unknown";
         return filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
     }
 
     private String sanitizeFilename(String filename) {
-        if (filename == null) return "document";
+        if (filename == null)
+            return "document";
         return filename.replaceAll("[^a-zA-Z0-9._\\-]", "_");
     }
 
@@ -219,7 +224,6 @@ public class DocumentService {
                 d.getChunkCount(),
                 d.getErrorMsg(),
                 d.getCreatedAt(),
-                d.getUpdatedAt()
-        );
+                d.getUpdatedAt());
     }
 }
