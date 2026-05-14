@@ -23,7 +23,7 @@ import java.util.UUID;
 @Slf4j
 public class IngestionController {
 
-    private final DocumentService         documentService;
+    private final DocumentService documentService;
     private final IngestionPipelineService pipelineService;
 
     /**
@@ -41,7 +41,7 @@ public class IngestionController {
             Authentication auth) throws Exception {
 
         UUID workspaceId = workspaceId(auth);
-        UUID userId      = userId(auth);
+        UUID userId = userId(auth);
 
         // Validate file is present before processing
         if (file == null || file.isEmpty()) {
@@ -79,6 +79,16 @@ public class IngestionController {
     }
 
     /**
+     * GET /api/v1/documents/by-conversation/{conversationId}
+     * List documents attached to a specific conversation (ChatGPT-style).
+     */
+    @GetMapping("/by-conversation/{conversationId}")
+    public List<DocumentDto> byConversation(
+            @PathVariable UUID conversationId, Authentication auth) {
+        return documentService.listByConversation(workspaceId(auth), conversationId);
+    }
+
+    /**
      * DELETE /api/v1/documents/{id}
      * Delete a document: removes from storage, vector DB, and metadata DB.
      */
@@ -113,7 +123,6 @@ public class IngestionController {
                 .body(Map.of("message", "Re-ingestion started", "documentId", id.toString()));
     }
 
-
     // ── Auth helpers ──────────────────────────────────────────────────────────
 
     private UUID workspaceId(Authentication auth) {
@@ -122,11 +131,11 @@ public class IngestionController {
     }
 
     private UUID userId(Authentication auth) {
-        ServletRequestAttributes attrs =
-                (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        ServletRequestAttributes attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if (attrs != null) {
             Object userId = attrs.getRequest().getAttribute("userId");
-            if (userId instanceof UUID u) return u;
+            if (userId instanceof UUID u)
+                return u;
         }
         return UUID.nameUUIDFromBytes(
                 auth.getName().getBytes(java.nio.charset.StandardCharsets.UTF_8));

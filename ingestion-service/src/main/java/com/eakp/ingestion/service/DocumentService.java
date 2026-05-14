@@ -45,8 +45,8 @@ public class DocumentService {
      * 2. Save metadata to DB (status=PENDING)
      * 3. Upload raw bytes to object storage
      * 4. Hand the pipeline (parse → chunk → embed → write vectors) to a
-     *    background virtual-thread executor and return the PENDING DTO
-     *    immediately so the HTTP request finishes in seconds, not minutes.
+     * background virtual-thread executor and return the PENDING DTO
+     * immediately so the HTTP request finishes in seconds, not minutes.
      *
      * Why async: synchronous ingestion on Render's free tier held the HTTP/2
      * connection for 30–90 s while embedding ran, which the edge proxy
@@ -133,6 +133,17 @@ public class DocumentService {
                 .orElseThrow(() -> new NoSuchElementException(
                         "Document not found: " + documentId));
         return toDto(doc);
+    }
+
+    /** Documents attached to a specific conversation — ordered newest first. */
+    @Transactional(readOnly = true)
+    public List<DocumentDto> listByConversation(UUID workspaceId, UUID conversationId) {
+        return documentRepository
+                .findByWorkspaceIdAndConversationIdOrderByCreatedAtDesc(
+                        workspaceId, conversationId)
+                .stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
     }
 
     // ── Delete ────────────────────────────────────────────────────────────────

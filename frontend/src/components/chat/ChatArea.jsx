@@ -54,9 +54,13 @@ export default function ChatArea({ onNewConv }) {
     const toast = useToastStore();
     const online = useNetworkStatus();
     const [input, setInput] = useState("");
-    const [files, setFiles] = useState([]);
-    const [uploading, setUploading] = useState(false);
-    const [uploadProgress, setUploadProgress] = useState([]); // per-file % aligned with files[]
+    // Pending uploads triggered from the composer. Each entry:
+    //   { localId, file, name, ext, sizeLabel, progress (0–100|-1), docId? }
+    // When the upload completes, docId is filled and the entry moves to
+    // `attachedDocs` (which is the authoritative list from the server).
+    const [pendingUploads, setPendingUploads] = useState([]);
+    // Documents already saved on the server for this conversation.
+    const [attachedDocs, setAttachedDocs] = useState([]);
     const [thinking, setThinking] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [editText, setEditText] = useState("");
@@ -114,6 +118,39 @@ export default function ChatArea({ onNewConv }) {
         }
     }, [editingId]);
 
+    // Load the documents already attached to this conversation so the user can
+    // see (and remove) them at any time. Fires whenever the active chat changes.
+    const loadAttachedDocs = useCallback(async (convId) => {
+        if (!convId) {
+            setAttachedDocs([]);
+            return;
+        }
+        try {
+            const list = await docsApi.byConversation(convId);
+            setAttachedDocs(Array.isArray(list) ? list : []);
+        } catch {
+            // soft-fail — not critical for chat flow
+        }
+    }, []);
+    useEffect(() => {
+        loadAttachedDocs(activeConversationId);
+    }, [activeConversationId, loadAttachedDocs]);
+
+    // Poll any pending docs (PENDING/PROCESSING) every 3s until READY/FAILED,
+    // so the chip flips from "Processing" → "Ready" without a manual refresh.
+    useEffect(() => {
+        if (!activeConversationId) return;
+        const stillProcessing = attachedDocs.some(
+            (d) => d.status === "PENDING" || d.status === "PROCESSING",
+        );
+        if (!stillProcessing) return;
+        const t = setInterval(
+            () => loadAttachedDocs(activeConversationId),
+            3000,
+        );
+        return () => clearInterval(t);
+    }, [activeConversationId, attachedDocs, loadAttachedDocs]);
+
     const sendMessage = useCallback(
         async (text) => {
             const msg = sanitizeInput(text || input.trim(), 10000);
@@ -123,64 +160,27 @@ export default function ChatArea({ onNewConv }) {
                 return;
             }
             setSending(true);
+
+            // Wait for any in-flight uploads from this composer (they were started
+            // the moment the user picked the file, so most of the time this is a
+            // no-op by the time the message is sent).
+            if (pendingUploads.some((p) => p.progress >= 0 && p.progress < 100)) {
+                toast.info("Finishing your upload…");
+                // Re-check shortly. The actual completion handlers run in the
+                // background and will clear pendingUploads when done.
+                const waitStart = Date.now();
+                while (
+                    Date.now() - waitStart < 60000 &&
+                    pendingUploads.some((p) => p.progress >= 0 && p.progress < 100)
+                    ) {
+                    // eslint-disable-next-line no-await-in-loop
+                    await new Promise((r) => setTimeout(r, 250));
+                }
+            }
+
             let convId = activeConversationId;
-
-            // If the user attached files, create the conversation FIRST so each
-            // upload can be tagged with conversationId — that's what allows the
-            // assistant to refer to "the resume" / "that PDF" without an exact
-            // filename, and what makes per-chat document scoping work.
-            if (files.length > 0 && !convId) {
-                try {
-                    const autoTitle = msg.length > 60 ? msg.slice(0, 57) + "..." : msg;
-                    const conv = await createConversation(autoTitle);
-                    convId = conv.id;
-                    onNewConv(convId);
-                } catch {
-                    toast.error("Failed to create conversation");
-                    setSending(false);
-                    return;
-                }
-            }
-
-            if (files.length > 0) {
-                setUploading(true);
-                setUploadProgress(files.map(() => 0));
-                for (let i = 0; i < files.length; i++) {
-                    const f = files[i];
-                    try {
-                        await docsApi.upload(
-                            f,
-                            (pct) => {
-                                setUploadProgress((prev) => {
-                                    const next = [...prev];
-                                    next[i] = pct;
-                                    return next;
-                                });
-                            },
-                            convId,
-                        );
-                        setUploadProgress((prev) => {
-                            const next = [...prev];
-                            next[i] = 100;
-                            return next;
-                        });
-                    } catch {
-                        setUploadProgress((prev) => {
-                            const next = [...prev];
-                            next[i] = -1; // sentinel for failure
-                            return next;
-                        });
-                        toast.error(`Upload failed: ${f.name}`);
-                    }
-                }
-                setFiles([]);
-                setUploadProgress([]);
-                setUploading(false);
-            }
-
             if (!convId) {
                 try {
-                    // Auto-generate title from first message (first 60 chars)
                     const autoTitle = msg.length > 60 ? msg.slice(0, 57) + "..." : msg;
                     const conv = await createConversation(autoTitle);
                     convId = conv.id;
@@ -250,7 +250,7 @@ export default function ChatArea({ onNewConv }) {
             input,
             streaming,
             activeConversationId,
-            files,
+            pendingUploads,
             sending,
             online,
             toast,
@@ -324,17 +324,123 @@ export default function ChatArea({ onNewConv }) {
         sendMessage(prevUserMsg?.role === "USER" ? prevUserMsg.content : "");
     };
 
-    const addFiles = (newFiles) => {
-        const allFiles = [...files, ...Array.from(newFiles)];
-        const { valid, errors } = validateBatch(allFiles);
-        if (!valid) {
-            errors.forEach((err) => toast.error(err));
-            return;
-        }
-        setFiles(allFiles);
-    };
-    const removeFile = (idx) =>
-        setFiles((prev) => prev.filter((_, i) => i !== idx));
+    // Build a stable "local id" so a single pending entry can be tracked across
+    // multiple setPendingUploads calls without indexes shifting under us.
+    const nextLocalIdRef = useRef(1);
+
+    const ensureConversation = useCallback(async () => {
+        if (activeConversationId) return activeConversationId;
+        const conv = await createConversation("New chat");
+        onNewConv(conv.id);
+        return conv.id;
+    }, [activeConversationId, createConversation, onNewConv]);
+
+    // Start uploads immediately when the user picks files — don't wait for Send.
+    // Each upload runs in parallel; the chip strip shows live progress and the
+    // attached-docs strip refreshes when each upload finishes.
+    const addFiles = useCallback(
+        async (newFiles) => {
+            const incoming = Array.from(newFiles);
+            // Validate against everything already pending so the per-batch / total
+            // size guards still hold.
+            const allForValidation = [
+                ...pendingUploads.map((p) => p.file),
+                ...incoming,
+            ];
+            const { valid, errors } = validateBatch(allForValidation);
+            if (!valid) {
+                errors.forEach((err) => toast.error(err));
+                return;
+            }
+
+            // Need a conversation before we can tag uploads. Create one lazily so the
+            // first attachment locks the chat in.
+            let convId;
+            try {
+                convId = await ensureConversation();
+            } catch {
+                toast.error("Failed to create conversation");
+                return;
+            }
+
+            const newEntries = incoming.map((f) => {
+                const ext = (f.name.split(".").pop() || "").toLowerCase();
+                const sizeKb = f.size / 1024;
+                const sizeLabel =
+                    sizeKb >= 1024
+                        ? `${(sizeKb / 1024).toFixed(1)} MB`
+                        : `${Math.max(1, Math.round(sizeKb))} KB`;
+                return {
+                    localId: nextLocalIdRef.current++,
+                    file: f,
+                    name: f.name,
+                    ext,
+                    sizeLabel,
+                    progress: 0,
+                };
+            });
+            setPendingUploads((prev) => [...prev, ...newEntries]);
+
+            // Kick off uploads in parallel.
+            newEntries.forEach((entry) => {
+                docsApi
+                    .upload(
+                        entry.file,
+                        (pct) => {
+                            setPendingUploads((prev) =>
+                                prev.map((p) =>
+                                    p.localId === entry.localId ? { ...p, progress: pct } : p,
+                                ),
+                            );
+                        },
+                        convId,
+                    )
+                    .then((dto) => {
+                        // Remove from pending; the server is now the source of truth.
+                        setPendingUploads((prev) =>
+                            prev.filter((p) => p.localId !== entry.localId),
+                        );
+                        if (dto && dto.id) {
+                            setAttachedDocs((prev) => [dto, ...prev]);
+                        } else {
+                            loadAttachedDocs(convId);
+                        }
+                    })
+                    .catch((err) => {
+                        setPendingUploads((prev) =>
+                            prev.map((p) =>
+                                p.localId === entry.localId ? { ...p, progress: -1 } : p,
+                            ),
+                        );
+                        toast.error(`Upload failed: ${entry.name} — ${err.message || ""}`);
+                    });
+            });
+        },
+        [pendingUploads, ensureConversation, toast, loadAttachedDocs],
+    );
+
+    const removePendingUpload = useCallback((localId) => {
+        // XHR can't be aborted cleanly here, but dropping the chip is enough —
+        // even if the upload completes, the user can still delete it via the
+        // attached strip below.
+        setPendingUploads((prev) => prev.filter((p) => p.localId !== localId));
+    }, []);
+
+    const removeAttachedDoc = useCallback(
+        async (docId, name) => {
+            const ok = globalThis.confirm(`Remove “${name}” from this chat?`);
+            if (!ok) return;
+            const prev = attachedDocs;
+            setAttachedDocs((d) => d.filter((x) => x.id !== docId));
+            try {
+                await docsApi.delete(docId);
+            } catch (e) {
+                setAttachedDocs(prev);
+                toast.error(`Could not remove file: ${e.message || ""}`);
+            }
+        },
+        [attachedDocs, toast],
+    );
 
     const isEmpty = messages.length === 0 && !activeConversationId;
 
@@ -569,14 +675,13 @@ export default function ChatArea({ onNewConv }) {
                         </button>
                     </div>
                 )}
-                {files.length > 0 && (
+                {(pendingUploads.length > 0 || attachedDocs.length > 0) && (
                     <div
                         className="composer-attachments"
                         role="list"
                         aria-label="Attached files"
                     >
-                        {files.map((f, i) => {
-                            const ext = (f.name.split(".").pop() || "").toLowerCase();
+                        {pendingUploads.map((p) => {
                             const iconMap = {
                                 pdf: "picture_as_pdf",
                                 docx: "description",
@@ -597,35 +702,27 @@ export default function ChatArea({ onNewConv }) {
                                 webp: "image",
                                 svg: "image",
                             };
-                            const icon = iconMap[ext] || "attach_file";
-                            const sizeKb = f.size / 1024;
-                            const sizeLabel =
-                                sizeKb >= 1024
-                                    ? `${(sizeKb / 1024).toFixed(1)} MB`
-                                    : `${Math.max(1, Math.round(sizeKb))} KB`;
-                            const pct = uploadProgress[i];
-                            const isUploading =
-                                uploading && pct !== undefined && pct >= 0 && pct < 100;
-                            const isDone = uploading && pct === 100;
-                            const isFailed = pct === -1;
+                            const icon = iconMap[p.ext] || "attach_file";
+                            const isUploading = p.progress >= 0 && p.progress < 100;
+                            const isFailed = p.progress === -1;
                             return (
                                 <div
-                                    key={i}
-                                    className={`composer-attachment-card ext-${ext}${isUploading ? " is-uploading" : ""}${isDone ? " is-done" : ""}${isFailed ? " is-failed" : ""}`}
+                                    key={`p-${p.localId}`}
+                                    className={`composer-attachment-card ext-${p.ext}${isUploading ? " is-uploading" : ""}${isFailed ? " is-failed" : ""}`}
                                     role="listitem"
                                 >
                                     <div className="composer-attachment-icon">
                     <span className="material-symbols-outlined filled">
-                      {isDone ? "check_circle" : isFailed ? "error" : icon}
+                      {isFailed ? "error" : icon}
                     </span>
                                     </div>
                                     <div className="composer-attachment-meta">
-                                        <div className="composer-attachment-name" title={f.name}>
-                                            {f.name}
+                                        <div className="composer-attachment-name" title={p.name}>
+                                            {p.name}
                                         </div>
                                         <div className="composer-attachment-sub">
                       <span className="composer-attachment-ext">
-                        {ext.toUpperCase() || "FILE"}
+                        {p.ext.toUpperCase() || "FILE"}
                       </span>
                                             <span
                                                 className="composer-attachment-dot"
@@ -635,40 +732,111 @@ export default function ChatArea({ onNewConv }) {
                       </span>
                                             <span className="composer-attachment-size">
                         {isUploading
-                            ? `Uploading… ${pct}%`
-                            : isDone
-                                ? "Uploaded"
-                                : isFailed
-                                    ? "Failed"
-                                    : sizeLabel}
+                            ? `Uploading… ${p.progress}%`
+                            : isFailed
+                                ? "Failed"
+                                : p.sizeLabel}
                       </span>
                                         </div>
-                                        {(isUploading || isDone) && (
+                                        {isUploading && (
                                             <div
                                                 className="composer-attachment-progress"
                                                 role="progressbar"
                                                 aria-valuemin={0}
                                                 aria-valuemax={100}
-                                                aria-valuenow={pct}
+                                                aria-valuenow={p.progress}
                                             >
                                                 <div
                                                     className="composer-attachment-progress-bar"
-                                                    style={{ width: `${pct}%` }}
+                                                    style={{ width: `${p.progress}%` }}
                                                 />
                                             </div>
                                         )}
                                     </div>
-                                    {!uploading && (
-                                        <button
-                                            type="button"
-                                            className="composer-attachment-remove"
-                                            onClick={() => removeFile(i)}
-                                            aria-label={`Remove ${f.name}`}
-                                            title="Remove"
+                                    <button
+                                        type="button"
+                                        className="composer-attachment-remove"
+                                        onClick={() => removePendingUpload(p.localId)}
+                                        aria-label={`Cancel ${p.name}`}
+                                        title="Cancel"
+                                    >
+                                        <span className="material-symbols-outlined">close</span>
+                                    </button>
+                                </div>
+                            );
+                        })}
+                        {attachedDocs.map((d) => {
+                            const ext = (d.fileType || "").toLowerCase();
+                            const iconMap = {
+                                pdf: "picture_as_pdf",
+                                docx: "description",
+                                doc: "description",
+                                txt: "article",
+                                md: "article",
+                                csv: "table_view",
+                                xlsx: "table_view",
+                                xls: "table_view",
+                                json: "data_object",
+                                html: "code",
+                                pptx: "slideshow",
+                                ppt: "slideshow",
+                            };
+                            const icon = iconMap[ext] || "attach_file";
+                            const isProcessing =
+                                d.status === "PENDING" || d.status === "PROCESSING";
+                            const isFailed = d.status === "FAILED";
+                            const isReady = d.status === "READY";
+                            const sub = isProcessing
+                                ? "Processing…"
+                                : isFailed
+                                    ? "Failed"
+                                    : isReady
+                                        ? "Ready"
+                                        : d.status;
+                            return (
+                                <div
+                                    key={d.id}
+                                    className={`composer-attachment-card ext-${ext}${isProcessing ? " is-uploading" : ""}${isReady ? " is-done" : ""}${isFailed ? " is-failed" : ""}`}
+                                    role="listitem"
+                                >
+                                    <div className="composer-attachment-icon">
+                    <span className="material-symbols-outlined filled">
+                      {isReady
+                          ? "check_circle"
+                          : isFailed
+                              ? "error"
+                              : icon}
+                    </span>
+                                    </div>
+                                    <div className="composer-attachment-meta">
+                                        <div
+                                            className="composer-attachment-name"
+                                            title={d.filename}
                                         >
-                                            <span className="material-symbols-outlined">close</span>
-                                        </button>
-                                    )}
+                                            {d.filename}
+                                        </div>
+                                        <div className="composer-attachment-sub">
+                      <span className="composer-attachment-ext">
+                        {(ext || "FILE").toUpperCase()}
+                      </span>
+                                            <span
+                                                className="composer-attachment-dot"
+                                                aria-hidden="true"
+                                            >
+                        •
+                      </span>
+                                            <span className="composer-attachment-size">{sub}</span>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="composer-attachment-remove"
+                                        onClick={() => removeAttachedDoc(d.id, d.filename)}
+                                        aria-label={`Remove ${d.filename}`}
+                                        title="Remove from this chat"
+                                    >
+                                        <span className="material-symbols-outlined">close</span>
+                                    </button>
                                 </div>
                             );
                         })}
