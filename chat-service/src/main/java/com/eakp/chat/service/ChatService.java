@@ -26,28 +26,28 @@ import java.util.stream.Collectors;
  * ChatService — main orchestrator.
  *
  * Execution path for a new question (cache miss):
- *   1. Rewrite query        → resolve pronouns/references using conversation history
- *   2. Check semantic cache → if hit, return immediately
- *   3. Retrieve context     → RAG pipeline (hybrid search + rerank)
- *   4. Load history         → conversation memory
- *   5. Build prompt         → system + context + history
- *   6. Stream LLM response  → SSE token-by-token
- *   7. Post-process         → hallucination guard, cache write, DB persist
- *   8. Record metrics
+ * 1. Rewrite query → resolve pronouns/references using conversation history
+ * 2. Check semantic cache → if hit, return immediately
+ * 3. Retrieve context → RAG pipeline (hybrid search + rerank)
+ * 4. Load history → conversation memory
+ * 5. Build prompt → system + context + history
+ * 6. Stream LLM response → SSE token-by-token
+ * 7. Post-process → hallucination guard, cache write, DB persist
+ * 8. Record metrics
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class ChatService {
 
-    private final ChatClient                  chatClient;
-    private final RagPipelineService          ragPipeline;
-    private final SemanticCacheService        semanticCache;
-    private final ConversationMemoryService   memoryService;
-    private final HallucinationGuardService   hallucinationGuard;
-    private final AiMetricsService            metrics;
-    private final QueryRewriteService         queryRewriter;
-    private final AttachedDocumentService     attachedDocuments;
+    private final ChatClient chatClient;
+    private final RagPipelineService ragPipeline;
+    private final SemanticCacheService semanticCache;
+    private final ConversationMemoryService memoryService;
+    private final HallucinationGuardService hallucinationGuard;
+    private final AiMetricsService metrics;
+    private final QueryRewriteService queryRewriter;
+    private final AttachedDocumentService attachedDocuments;
     private final CrossConversationSearchService crossConvSearch;
 
     @Value("${app.rag.max-context-chars:8000}")
@@ -68,9 +68,9 @@ public class ChatService {
      * @return Flux of SSE-ready strings: tokens, then a [DONE] marker
      */
     public Flux<String> streamAnswer(String query,
-                                     UUID   conversationId,
-                                     UUID   workspaceId,
-                                     UUID   userId) {
+                                     UUID conversationId,
+                                     UUID workspaceId,
+                                     UUID userId) {
 
         final Instant start = Instant.now();
 
@@ -112,8 +112,7 @@ public class ChatService {
 
             // 3 + 4: Retrieve context and history
             return Mono.fromCallable(() -> {
-                        List<RetrievedChunk> context =
-                                ragPipeline.retrieve(effectiveQuery, workspaceId, conversationId);
+                        List<RetrievedChunk> context = ragPipeline.retrieve(effectiveQuery, workspaceId, conversationId);
                         metrics.recordChunksRetrieved(context.size());
                         return context;
                     })
@@ -134,8 +133,14 @@ public class ChatService {
                         // Files explicitly attached to this conversation — lets the LLM
                         // resolve references like "the resume" / "that PDF" without
                         // needing the user to repeat the filename.
-                        List<String> attachedFiles =
-                                attachedDocuments.attachedFilenames(conversationId, workspaceId);
+                        List<String> attachedFiles = attachedDocuments.attachedFilenames(conversationId, workspaceId);
+
+                        // Detect documents the user JUST attached that have not
+                        // finished ingestion yet. If context is empty AND there
+                        // are pending docs, we tell the user it's still processing
+                        // rather than the generic "no info" reply.
+                        List<String> pendingFiles =
+                                attachedDocuments.pendingAttachedFilenames(conversationId, workspaceId);
 
                         // Documents from OTHER chats that the retrieval pipeline
                         // surfaced as relevant. The LLM uses these to proactively
@@ -151,18 +156,18 @@ public class ChatService {
 
                         // Cross-conversation memory: snippets from earlier chats in
                         // the same workspace. Powers "summarize yesterday's discussion".
-                        java.util.List<CrossConversationSearchService.PastMessage> pastMessages =
-                                crossConvSearch.findRelevantPastMessages(
+                        java.util.List<CrossConversationSearchService.PastMessage> pastMessages = crossConvSearch
+                                .findRelevantPastMessages(
                                         effectiveQuery, workspaceId, conversationId);
 
                         // Build the prompt
                         String systemPrompt = buildSystemPrompt(
-                                trimmedContext, attachedFiles, relatedFiles, pastMessages);
-                        String userMessage  = buildUserMessage(effectiveQuery, history);
+                                trimmedContext, attachedFiles, relatedFiles,
+                                pastMessages, pendingFiles);
+                        String userMessage = buildUserMessage(effectiveQuery, history);
 
-                        final List<RetrievedChunk> capturedContext   = trimmedContext;
-                        final AtomicReference<StringBuilder> buffer  =
-                                new AtomicReference<>(new StringBuilder());
+                        final List<RetrievedChunk> capturedContext = trimmedContext;
+                        final AtomicReference<StringBuilder> buffer = new AtomicReference<>(new StringBuilder());
 
                         Instant llmStart = Instant.now();
 
@@ -172,8 +177,7 @@ public class ChatService {
                                 .user(userMessage)
                                 .stream()
                                 .content()
-                                .doOnNext(token ->
-                                        buffer.get().append(token))
+                                .doOnNext(token -> buffer.get().append(token))
                                 .doOnComplete(() -> {
                                     String fullAnswer = buffer.get().toString();
 
@@ -182,15 +186,13 @@ public class ChatService {
                                     metrics.recordPipelineLatency(
                                             Duration.between(start, Instant.now()));
 
-                                    Mono.fromRunnable(() ->
-                                                    postProcess(query, effectiveQuery, workspaceId,
-                                                            conversationId, userId,
-                                                            fullAnswer, capturedContext))
+                                    Mono.fromRunnable(() -> postProcess(query, effectiveQuery, workspaceId,
+                                                    conversationId, userId,
+                                                    fullAnswer, capturedContext))
                                             .subscribeOn(Schedulers.boundedElastic())
                                             .subscribe();
                                 })
-                                .doOnError(e ->
-                                        log.error("Streaming error for ws={}", workspaceId, e))
+                                .doOnError(e -> log.error("Streaming error for ws={}", workspaceId, e))
                                 .concatWith(Flux.just("[DONE]"));
                     });
         }).onErrorResume(e -> {
@@ -237,15 +239,14 @@ public class ChatService {
 
     private void postProcess(String originalQuery,
                              String effectiveQuery,
-                             UUID   workspaceId,
-                             UUID   conversationId,
-                             UUID   userId,
+                             UUID workspaceId,
+                             UUID conversationId,
+                             UUID userId,
                              String answer,
                              List<RetrievedChunk> context) {
         try {
             // Hallucination guard
-            GroundingResult grounding =
-                    hallucinationGuard.check(answer, context);
+            GroundingResult grounding = hallucinationGuard.check(answer, context);
             metrics.recordFaithfulness(grounding.confidence());
 
             if (!grounding.grounded()) {
@@ -285,8 +286,8 @@ public class ChatService {
         }
     }
 
-    private void persistMessagesAsync(UUID   conversationId,
-                                      UUID   workspaceId,
+    private void persistMessagesAsync(UUID conversationId,
+                                      UUID workspaceId,
                                       String userQuery,
                                       String assistantAnswer,
                                       List<Message.SourceReference> sources,
@@ -307,24 +308,42 @@ public class ChatService {
     private String buildSystemPrompt(List<RetrievedChunk> context,
                                      List<String> attachedFiles,
                                      List<String> relatedFiles,
-                                     List<CrossConversationSearchService.PastMessage> pastMessages) {
-        boolean hasContext      = !context.isEmpty();
-        boolean hasPast         = pastMessages != null && !pastMessages.isEmpty();
+                                     List<CrossConversationSearchService.PastMessage> pastMessages,
+                                     List<String> pendingFiles) {
+        boolean hasContext = !context.isEmpty();
+        boolean hasPast = pastMessages != null && !pastMessages.isEmpty();
+        boolean hasPending = pendingFiles != null && !pendingFiles.isEmpty();
 
         if (!hasContext && !hasPast) {
+            if (hasPending) {
+                // The user just uploaded a file and is asking about it before
+                // ingestion finished. Give a specific, friendly reply.
+                String list = pendingFiles.stream()
+                        .map(f -> "\"" + f + "\"")
+                        .collect(Collectors.joining(", "));
+                return """
+                        You are a knowledge assistant. The user just attached a
+                        file (%s) that is still being processed. Respond with
+                        EXACTLY this sentence and nothing else:
+
+                        "Your file %s is still being processed — this usually \
+                        takes about 10–20 seconds. Please ask your question \
+                        again in a moment."
+                        """.formatted(list, list);
+            }
             // Keep this short and factual — never invent metaphors or
             // multi-paragraph explanations. The user just needs to know
             // the retrieval pipeline returned no relevant chunks.
             return """
-                You are a knowledge assistant. No relevant document content
-                was retrieved for this question. Respond with exactly this
-                sentence and nothing else:
+                    You are a knowledge assistant. No relevant document content
+                    was retrieved for this question. Respond with exactly this
+                    sentence and nothing else:
 
-                "I couldn't find anything relevant in the uploaded documents \
-                for that question. If you just uploaded a file, please wait a \
-                few seconds for ingestion to finish and try again, or rephrase \
-                your question."
-                """;
+                    "I couldn't find anything relevant in the uploaded documents \
+                    for that question. If you just uploaded a file, please wait a \
+                    few seconds for ingestion to finish and try again, or rephrase \
+                    your question."
+                    """;
         }
 
         String contextBlock = hasContext
@@ -335,16 +354,22 @@ public class ChatService {
 
         // When the user attached files inline (ChatGPT-style), tell the LLM
         // their filenames so it can resolve casual references ("the resume",
-        // "that PDF", "the spec I shared") without needing exact names.
+        // "that PDF", "summarize this", "explain it") without needing exact
+        // names. The first file in the list is the "current" attachment
+        // (most-recent upload) and is what bare demonstratives like "this"
+        // / "it" / "the file" refer to.
         String attachedBlock = (attachedFiles == null || attachedFiles.isEmpty())
                 ? ""
                 : """
-                    ATTACHED TO THIS CONVERSATION (treat references like \
-                    "the resume", "that PDF", "the document", "this file" \
-                    as referring to these, in order of upload):
-                    %s
+                        ATTACHED TO THIS CONVERSATION (most recent first). Treat \
+                        bare references like "this", "that", "it", "the file", \
+                        "the document", "this PDF", "summarize this", "explain \
+                        it", "what does this say" as referring to the FIRST file \
+                        in this list. Phrases like "the resume" / "the spec" / \
+                        "the contract" match by filename:
+                        %s
 
-                    """.formatted(attachedFiles.stream()
+                        """.formatted(attachedFiles.stream()
                 .map(f -> "  - " + f)
                 .collect(Collectors.joining("\n")));
 
@@ -355,12 +380,12 @@ public class ChatService {
         String relatedBlock = (relatedFiles == null || relatedFiles.isEmpty())
                 ? ""
                 : """
-                    POTENTIALLY RELATED DOCUMENTS (uploaded earlier in OTHER \
-                    chats, not currently attached — only mention if directly \
-                    relevant to the user's question):
-                    %s
+                        POTENTIALLY RELATED DOCUMENTS (uploaded earlier in OTHER \
+                        chats, not currently attached — only mention if directly \
+                        relevant to the user's question):
+                        %s
 
-                    """.formatted(relatedFiles.stream()
+                        """.formatted(relatedFiles.stream()
                 .map(f -> "  - " + f)
                 .collect(Collectors.joining("\n")));
 
@@ -370,44 +395,44 @@ public class ChatService {
         String pastBlock = (!hasPast)
                 ? ""
                 : """
-                    RECENT RELATED CONVERSATIONS (snippets from this \
-                    workspace's earlier chats, newest first):
-                    %s
+                        RECENT RELATED CONVERSATIONS (snippets from this \
+                        workspace's earlier chats, newest first):
+                        %s
 
-                    """.formatted(pastMessages.stream()
+                        """.formatted(pastMessages.stream()
                 .map(CrossConversationSearchService.PastMessage::toPromptLine)
                 .collect(Collectors.joining("\n")));
 
         return """
-            You are an expert knowledge assistant for this workspace. You
-            answer using ONLY the CONTEXT, RELATED DOCUMENTS, and RECENT
-            RELATED CONVERSATIONS provided below. You are precise and
-            thorough.
+                You are an expert knowledge assistant for this workspace. You
+                answer using ONLY the CONTEXT, RELATED DOCUMENTS, and RECENT
+                RELATED CONVERSATIONS provided below. You are precise and
+                thorough.
 
-            %s%s%sRules:
-            1. Answer based SOLELY on the material above. Never use outside knowledge.
-            2. Cite EVERY factual claim with [Source: filename] or, when quoting
-               a past conversation, [Source: chat "<title>", <date>].
-            3. If the user references something with vague language ("the resume",
-               "that PDF", "yesterday's discussion", "the doc we talked about"),
-               resolve it against the ATTACHED / RELATED / RECENT sections.
-            4. If the answer is partially supported, answer what you can and
-               explicitly state what is missing.
-            5. If the answer is NOT supported at all, respond EXACTLY with:
-               "I don't have enough information to answer that based on the
-                uploaded documents or earlier conversations."
-            6. Be concise. Use bullet points for multi-part answers. Avoid
-               repeating the question and avoid metaphors/analogies.
-            7. If multiple sources conflict, note the discrepancy.
-            8. Do NOT speculate, infer, or extrapolate beyond what is stated.
-            9. If you find a POTENTIALLY RELATED DOCUMENT that looks directly
-               relevant but is not currently attached, finish your answer with
-               one line: "I also have <filename> on this topic — want me to
-               include it?".
+                %s%s%sRules:
+                1. Answer based SOLELY on the material above. Never use outside knowledge.
+                2. Cite EVERY factual claim with [Source: filename] or, when quoting
+                   a past conversation, [Source: chat "<title>", <date>].
+                3. If the user references something with vague language ("the resume",
+                   "that PDF", "yesterday's discussion", "the doc we talked about"),
+                   resolve it against the ATTACHED / RELATED / RECENT sections.
+                4. If the answer is partially supported, answer what you can and
+                   explicitly state what is missing.
+                5. If the answer is NOT supported at all, respond EXACTLY with:
+                   "I don't have enough information to answer that based on the
+                    uploaded documents or earlier conversations."
+                6. Be concise. Use bullet points for multi-part answers. Avoid
+                   repeating the question and avoid metaphors/analogies.
+                7. If multiple sources conflict, note the discrepancy.
+                8. Do NOT speculate, infer, or extrapolate beyond what is stated.
+                9. If you find a POTENTIALLY RELATED DOCUMENT that looks directly
+                   relevant but is not currently attached, finish your answer with
+                   one line: "I also have <filename> on this topic — want me to
+                   include it?".
 
-            CONTEXT (%d chunks, %d characters):
-            %s
-            """.formatted(attachedBlock, relatedBlock, pastBlock,
+                CONTEXT (%d chunks, %d characters):
+                %s
+                """.formatted(attachedBlock, relatedBlock, pastBlock,
                 context.size(),
                 context.stream().mapToInt(c -> c.content().length()).sum(),
                 contextBlock);
@@ -418,10 +443,10 @@ public class ChatService {
             return query;
         }
         return """
-            %s
+                %s
 
-            Current question: %s
-            """.formatted(history, query);
+                Current question: %s
+                """.formatted(history, query);
     }
 
     /**
@@ -432,7 +457,8 @@ public class ChatService {
         List<String> tokens = new ArrayList<>();
         String[] words = text.split("(?<=\\s)|(?=\\s)");
         for (String w : words) {
-            if (!w.isEmpty()) tokens.add(w);
+            if (!w.isEmpty())
+                tokens.add(w);
         }
         return tokens;
     }

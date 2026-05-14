@@ -344,6 +344,8 @@ export function streamChat(conversationId, message, onToken, onDone, onError) {
 export const documents = {
     list: () => request("/api/v1/documents"),
     get: (id) => request(`/api/v1/documents/${id}`),
+    byConversation: (conversationId) =>
+        request(`/api/v1/documents/by-conversation/${conversationId}`),
     upload: async (file, onProgress, conversationId) => {
         const makeForm = () => {
             const f = new FormData();

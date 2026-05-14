@@ -85,6 +85,10 @@ public class RagPipelineService {
         if (!attachedDocIds.isEmpty()) {
             log.info("Conversation {} has {} attached document(s) — boosting their chunks",
                     conversationId, attachedDocIds.size());
+            // If the user attached a file in the SAME request as their question
+            // ("summarize this"), ingestion may still be running. Wait briefly
+            // for chunks to appear so we don't falsely answer "no information".
+            waitForAttachedChunks(attachedDocIds, workspaceId);
         }
 
         // 1. Vector search (semantic)
@@ -100,9 +104,9 @@ public class RagPipelineService {
         List<ScoredChunk> fused = reciprocalRankFusion(vectorResults, textResults);
 
         // 3a. Boost: pull attached-document chunks to the front while preserving
-        //     their relative RRF order; non-attached chunks follow as fallback.
+        // their relative RRF order; non-attached chunks follow as fallback.
         if (!attachedDocIds.isEmpty()) {
-            List<ScoredChunk> attached  = new ArrayList<>();
+            List<ScoredChunk> attached = new ArrayList<>();
             List<ScoredChunk> remaining = new ArrayList<>();
             for (ScoredChunk c : fused) {
                 if (c.documentId() != null && attachedDocIds.contains(c.documentId())) {
@@ -142,9 +146,46 @@ public class RagPipelineService {
         return reranked.stream().limit(topKRerank).toList();
     }
 
-    /** Direct fetch of every chunk for a given set of document IDs (workspace-scoped). */
+    /**
+     * Poll up to ~12s for at least one chunk to appear for any of the attached
+     * docs. Covers the race where the user attaches a file and immediately
+     * asks about it before async ingestion has written rows.
+     */
+    private void waitForAttachedChunks(Set<String> docIds, UUID workspaceId) {
+        if (docIds.isEmpty()) return;
+        String inList = String.join(",",
+                docIds.stream().map(id -> "'" + id.replace("'", "") + "'").toList());
+        String sql = ("SELECT COUNT(*)::int FROM document_chunks "
+                + "WHERE workspace_id = ?::uuid AND document_id IN (" + inList + ")");
+        long deadline = System.currentTimeMillis() + 12_000L;
+        int attempt = 0;
+        while (System.currentTimeMillis() < deadline) {
+            try {
+                Integer n = jdbcTemplate.queryForObject(sql, Integer.class, workspaceId.toString());
+                if (n != null && n > 0) {
+                    if (attempt > 0) {
+                        log.info("Waited {} attempt(s) for attached-doc chunks — found {} chunk(s)",
+                                attempt, n);
+                    }
+                    return;
+                }
+            } catch (Exception ignored) {}
+            attempt++;
+            try { Thread.sleep(1_500L); } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+        }
+        log.info("Attached docs still have no chunks after wait — ingestion may not be done yet");
+    }
+
+    /**
+     * Direct fetch of every chunk for a given set of document IDs
+     * (workspace-scoped).
+     */
     private List<ScoredChunk> chunksForDocuments(Set<String> docIds, UUID workspaceId) {
-        if (docIds.isEmpty()) return List.of();
+        if (docIds.isEmpty())
+            return List.of();
         String inList = String.join(",",
                 docIds.stream().map(id -> "'" + id.replace("'", "") + "'").toList());
         String sql = """

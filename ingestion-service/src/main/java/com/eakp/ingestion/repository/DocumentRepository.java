@@ -20,6 +20,10 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
 
     List<Document> findByWorkspaceId(UUID workspaceId, Pageable pageable);
 
+    /** Documents attached to a specific conversation (ChatGPT-style uploads). */
+    List<Document> findByWorkspaceIdAndConversationIdOrderByCreatedAtDesc(
+            UUID workspaceId, UUID conversationId);
+
     Optional<Document> findByIdAndWorkspaceId(UUID id, UUID workspaceId);
 
     List<Document> findByStatus(DocumentStatus status);
@@ -29,7 +33,7 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
     @Modifying
     @Transactional
     @Query("UPDATE Document d SET d.status = :status, d.errorMsg = :error, " +
-           "d.chunkCount = :chunkCount WHERE d.id = :id")
+            "d.chunkCount = :chunkCount WHERE d.id = :id")
     void updateStatus(UUID id, DocumentStatus status,
                       String error, Integer chunkCount);
 
