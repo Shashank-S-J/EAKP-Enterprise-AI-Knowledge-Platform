@@ -1,16 +1,54 @@
 # Enterprise AI Knowledge Platform (EAKP)
 
 <p align="center">
-  <strong>A production-grade, multi-tenant RAG platform for enterprise knowledge management</strong>
+  <strong>Production-grade, multi-tenant Retrieval-Augmented Generation (RAG) platform — ChatGPT for your company's private data, with citations you can trust.</strong>
 </p>
 
 <p align="center">
+  <a href="https://eakp.vercel.app"><strong>🚀 Live Demo → eakp.vercel.app</strong></a>
+</p>
+
+<p align="center">
+  <a href="https://eakp.vercel.app"><img src="https://img.shields.io/badge/Live%20Demo-eakp.vercel.app-black?logo=vercel" alt="Live Demo" /></a>
   <img src="https://img.shields.io/badge/Java-21-orange?logo=openjdk" alt="Java 21" />
   <img src="https://img.shields.io/badge/Spring%20Boot-3.3.5-green?logo=spring-boot" alt="Spring Boot" />
   <img src="https://img.shields.io/badge/React-19-blue?logo=react" alt="React 19" />
   <img src="https://img.shields.io/badge/PostgreSQL-16%2Bpgvector-blue?logo=postgresql" alt="PostgreSQL" />
-  <img src="https://img.shields.io/badge/License-MIT-yellow" alt="MIT License" />
+  <img src="https://img.shields.io/badge/Microservices-5-purple" alt="5 services" />
+  <img src="https://img.shields.io/badge/Deployed-Render%20%2B%20Vercel-black" alt="Deployed" />
 </p>
+
+---
+
+## TL;DR for Reviewers
+
+A full-stack, **production-deployed** RAG platform showcasing modern distributed-systems and applied-AI engineering. Built end-to-end — architecture, backend microservices, frontend, infra, deployment, and evals.
+
+- **5 microservices** (Spring Boot 3 / Java 21, virtual threads) behind a JWT-secured API gateway
+- **Hybrid retrieval** (pgvector HNSW + Postgres GIN full-text search) fused via **Reciprocal Rank Fusion**, then **LLM re-ranked**
+- **Hallucination guard** — every answer is scored for faithfulness against retrieved context before it’s cached or returned
+- **Async ingestion pipeline** (RabbitMQ → Tika → chunker → Mistral embeddings → pgvector) with DLQ + idempotent retries
+- **Multi-tenant isolation** enforced at the SQL layer on every read
+- **Streaming UX** — SSE token-by-token, ChatGPT-style attachments pinned to the message that sent them
+- **Live deployment** on Render (backend) + Vercel (frontend) + Neon (Postgres) + Upstash (Redis) + CloudAMQP + Supabase Storage — zero credit cards
+- **25-question eval harness** to regress retrieval and answer quality
+
+---
+
+## Engineering Highlights
+
+| # | Capability | Why it matters |
+|---|---|---|
+| 1 | **Hybrid search + RRF + LLM re-rank** | Semantic recall (vectors) + lexical precision (BM25-style FTS), then an LLM scores 0–10 to surface the *most relevant* chunks within an 8K-char budget. |
+| 2 | **Semantic cache w/ pgvector** | Cosine-similarity lookup at ≥ 0.92 returns cached answers in ms; auto-evicted on new ingestion to prevent stale results. |
+| 3 | **Faithfulness-gated caching** | Only answers with grounding score ≥ 0.6 are cached — hallucinations don’t poison the cache. |
+| 4 | **Conversation memory** | Sliding window + LLM-summarized older turns + cross-conversation FTS recall (GIN index on `messages.content`). |
+| 5 | **Async, resilient ingestion** | RabbitMQ work queue, 3× retry with exponential backoff, dead-letter queue, idempotent doc IDs — a flaky parser never breaks the pipeline. |
+| 6 | **Resilience4j circuit breakers** | Every external LLM/embedding call is wrapped; the system degrades gracefully when Groq or Mistral is rate-limited. |
+| 7 | **Multi-tenant by design** | Every repository method takes `workspace_id`; no cross-tenant leak is even *possible* at the query layer. |
+| 8 | **JWT + refresh + Redis blacklist** | Logout actually logs you out across all services; tokens are validated on every request. |
+| 9 | **ChatGPT-style UX** | SSE streaming, instant uploads with progress, attachments pinned to the user message, follow-ups carry context server-side. |
+| 10 | **Observability** | Micrometer → Prometheus → Grafana, correlation IDs propagated across services, structured logs. |
 
 ---
 
@@ -29,8 +67,12 @@ Enterprises sit on vast repositories of internal documents — policy manuals, p
 
 ## Live Demo
 
-> **Frontend**: Deploy on Vercel (free) — [See Deployment Guide](./DEPLOYMENT.md)  
-> **Backend**: Deploy on Render.com (free) — 4 microservices with Docker
+> **🚀 Try it now: [https://eakp.vercel.app](https://eakp.vercel.app)**
+>
+> **Frontend**: Vercel — React 19 SPA  
+> **Backend**: Render.com — 4 Dockerized Spring Boot services  
+> **Data**: Neon (Postgres + pgvector) · Upstash (Redis) · Supabase (S3 storage) · CloudAMQP (RabbitMQ)  
+> See [DEPLOYMENT.md](./DEPLOYMENT.md) for the full free-tier playbook.
 
 ---
 
@@ -83,49 +125,61 @@ Enterprises sit on vast repositories of internal documents — policy manuals, p
 
 ## Key Features
 
-### RAG Pipeline
-- **Hybrid Search** — pgvector ANN (semantic) + PostgreSQL FTS (BM25/keyword) merged via Reciprocal Rank Fusion
-- **Multi-Turn Query Rewriting** — resolves pronouns/references using conversation history
-- **LLM-Based Re-ranking** — cross-encoder-style 0–10 relevance scoring
-- **Context Trimming** — keeps only the highest-relevance chunks within 8K char budget
-- **Semantic Cache** — pgvector cosine similarity lookup (threshold ≥ 0.92), auto-evicted on new document ingestion
-- **Hallucination Guard** — NLI-style grounding validation with confidence scoring
-- **Confidence-Gated Caching** — only caches answers with faithfulness ≥ 0.6
-- **Conversation Memory** — sliding window + LLM summarisation for multi-turn context
+### RAG Pipeline (the interesting bit)
+- **Hybrid Search** — pgvector ANN (semantic) + PostgreSQL FTS (BM25/keyword) merged via **Reciprocal Rank Fusion**
+- **Multi-Turn Query Rewriting** — resolves pronouns (“it”, “that doc”, “summarize this”) using conversation history + currently-attached documents
+- **LLM-Based Re-ranking** — cross-encoder-style 0–10 relevance scoring on the candidate set
+- **Context Trimming** — keeps only highest-relevance chunks within an 8K-char budget
+- **Semantic Cache** — pgvector cosine lookup (threshold ≥ 0.92), evicted on new doc ingestion
+- **Hallucination Guard** — NLI-style grounding validation with a faithfulness score
+- **Confidence-Gated Caching** — only answers with faithfulness ≥ 0.6 are cached
+- **Conversation Memory** — sliding window + LLM summarisation; GIN-FTS recall across other chats
+- **Per-conversation document attachments** — docs uploaded in a chat are auto-boosted on every future turn in that chat, no re-attach needed
 
 ### Security
-- JWT access + refresh tokens with Redis blacklist (enforced across ALL services)
+- JWT access + refresh tokens with **Redis blacklist enforced on every service** (not just the gateway)
 - OAuth 2.0 (Google, GitHub) with server-side token verification
-- Brute-force protection (account lockout after failed attempts)
-- Password complexity enforcement (8+ chars, uppercase, lowercase, digit, special)
-- Rate limiting (Bucket4j, per-user/IP)
-- CORS, CSP, HSTS, X-Frame-Options headers
-- Multi-tenant workspace isolation (every query scoped by `workspace_id`)
+- Brute-force protection (account lockout), password complexity rules, BCrypt hashing
+- Bucket4j rate limiting (per-user + per-IP)
+- CORS, CSP, HSTS, X-Frame-Options
+- **Multi-tenant workspace isolation** — every SQL query scoped by `workspace_id` at the repository layer
 - GDPR-compliant cookie consent
 
-### Frontend
-- React 19 + Vite 8 + Zustand state management
-- Real-time SSE streaming with token-by-token display
-- Dark/light theme with 3D motion animations
-- Document upload with drag-and-drop, progress tracking, file validation
-- Conversation management (create, rename, delete, export)
-- Message feedback (thumbs up/down)
-- Admin dashboard with RAG quality metrics
-- Keyboard shortcuts, network status awareness, error boundaries
-- Cross-tab logout synchronization via BroadcastChannel
-- Lazy-loaded routes with code splitting
+### Frontend (React 19)
+- Real-time **SSE streaming** with token-by-token display and graceful auto-reconnect
+- **ChatGPT-style attachments** — upload runs in the background with live progress, chips pin to the user message on send, follow-ups still carry context
+- Dark/light theme with subtle 3D motion
+- Drag-and-drop uploads with progress tracking and client-side validation
+- Conversation management (create, rename, delete, export to Markdown)
+- Message feedback (👍 / 👎) feeding analytics
+- Admin dashboard with RAG quality metrics (faithfulness distribution)
+- Keyboard shortcuts, network-status awareness, error boundaries
+- Cross-tab logout via `BroadcastChannel`
+- Lazy-loaded routes, code splitting, Lighthouse-friendly
 
 ### Resilience
-- Circuit breakers on all LLM calls (Resilience4j)
-- RabbitMQ dead-letter queue with 3× retry + exponential backoff
-- Frontend: exponential backoff on 5xx, auto-reconnect on SSE failure
-- Graceful shutdown on all services
+- **Resilience4j circuit breakers** on all LLM and embedding calls
+- RabbitMQ **dead-letter queue** with 3× retry + exponential backoff
+- Frontend: exponential backoff on 5xx, SSE auto-reconnect, offline detection
+- Graceful shutdown on every service (in-flight requests drain)
 
 ### Observability
-- Custom Micrometer metrics → Prometheus → Grafana
-- Correlation IDs across all services
-- Structured logging with thread/correlation context
+- Custom Micrometer metrics → Prometheus → Grafana (retrieval latency, faithfulness, cache hit ratio)
+- **Correlation IDs** propagated across all services and into logs
+- Structured JSON logging with thread + correlation context
 - Audit log for admin actions
+
+---
+
+## Design Decisions Worth Calling Out
+
+- **Hybrid search beats pure vector search.** Vector recall alone misses exact-match keyword queries (model names, error codes, acronyms). FTS alone misses paraphrases. RRF gives us both, and the LLM re-rank cleans up the merged set.
+- **The LLM is not the source of truth — the retriever is.** The hallucination guard is a separate LLM call that scores how well the answer is supported by the retrieved context. Below 0.6 we don’t cache.
+- **Async ingestion was non-negotiable.** Parsing a 50 MB PDF can take 30+ seconds. Putting that on the request thread would block uploads and kill UX. RabbitMQ + a worker decouples cleanly.
+- **Java 21 virtual threads** let each service handle thousands of concurrent SSE streams without a reactive paradigm shift — plain `@RestController` code, massive concurrency.
+- **Postgres + pgvector over a dedicated vector DB.** One database, one backup story, transactional consistency between docs/chunks/messages, free tier on Neon. The ergonomics outweigh the marginal performance gap at this scale.
+- **Mistral `mistral-embed` (1024-dim) over local nomic-embed.** Higher recall on enterprise-style prose, free tier sufficient for a demo, no GPU needed in production.
+- **Per-conversation attachments are server-authoritative.** The UI is just a presentation of `documents.conversation_id`. This means follow-up questions work even if the user clears the composer chips — there’s no client-side state the server depends on.
 
 ---
 
@@ -425,9 +479,3 @@ histogram_quantile(0.95, rate(rag_pipeline_latency_seconds_bucket[5m]))
 # Faithfulness score
 rate(rag_faithfulness_score_sum[5m]) / rate(rag_faithfulness_score_count[5m])
 ```
-
----
-
-## License
-
-MIT
