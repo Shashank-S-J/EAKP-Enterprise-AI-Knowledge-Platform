@@ -7839,6 +7839,12 @@ textarea:focus-visible {
     max-width: 1200px;
     width: 100%;
     margin: 0 auto;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
 }
 .help-hero {
     display: grid;
