@@ -8197,3 +8197,486 @@ textarea:focus-visible {
         align-items: flex-start;
     }
 }
+
+/* ============================================================
+   ░░  RESPONSIVE POLISH  ░░
+   Final layer that unifies mobile + laptop behavior across
+   every page. Kept at end of file so it always wins over
+   feature-area rules above. Touches:
+   - Global overflow / viewport guards
+   - AdminPage scroll + bottom-nav clearance
+   - Settings tabs row on phone
+   - Auth pages safe-area + tap targets
+   - Chat composer / message bubble on narrow phones
+   - Sidebar drawer and docs panel on tablets
+   - Tables that would otherwise overflow horizontally
+   - Modals capped to viewport
+   - Laptop range (1024-1366px) gets tighter paddings so
+     content doesn't squeeze against the sidebar.
+   ============================================================ */
+
+/* ── Global viewport guards ── */
+html,
+body,
+#root {
+    max-width: 100vw;
+    overflow-x: hidden;
+}
+img,
+video,
+canvas,
+svg {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Use dynamic viewport units so mobile URL bars don't clip content. */
+.app-layout {
+    height: 100dvh;
+}
+.auth-page {
+    min-height: 100dvh;
+}
+
+/* ── Laptop range (1024 – 1366px) ── */
+@media (min-width: 1025px) and (max-width: 1366px) {
+    .admin-page,
+    .settings-page,
+    .help-page {
+        padding-left: 28px;
+        padding-right: 28px;
+    }
+    .chat-container {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+    .help-hero {
+        padding: 28px;
+        gap: 24px;
+    }
+    .help-hero h1 {
+        font-size: 32px;
+    }
+    .help-tiles {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* ── Tablet & phone shared (≤ 1024px) ── */
+@media (max-width: 1024px) {
+    .admin-page {
+        min-height: 100dvh;
+        padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+    }
+    /* Tables become horizontally scrollable instead of overflowing the page */
+    .admin-page table,
+    .settings-page table,
+    .help-page table {
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        white-space: nowrap;
+    }
+}
+
+/* ── Phone (≤ 768px) ── */
+@media (max-width: 768px) {
+    /* Settings tab strip stays one row but scrolls horizontally */
+    .settings-tabs {
+        gap: 1.25rem;
+        padding-bottom: 4px;
+        margin-bottom: 1.25rem;
+        -webkit-overflow-scrolling: touch;
+    }
+    .settings-tabs::-webkit-scrollbar {
+        display: none;
+    }
+    .settings-tab {
+        font-size: 14px;
+    }
+    .settings-page {
+        padding: 1rem 1rem calc(96px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* Admin page gets tighter paddings + readable header on phone */
+    .admin-page {
+        padding: 1rem 1rem calc(96px + env(safe-area-inset-bottom, 0px));
+    }
+    .admin-stats-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+
+    /* Chat header truncates long conversation titles instead of wrapping */
+    .chat-header h2 {
+        max-width: 50vw;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* Touch-target floor on every icon-button in the app */
+    .chat-header-btn,
+    .input-btn,
+    .action-btn,
+    .feedback-btn,
+    .composer-attachment-remove {
+        min-width: 40px;
+        min-height: 40px;
+    }
+
+    /* All form inputs ≥ 16px so iOS doesn't zoom on focus */
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    input[type="search"],
+    textarea,
+    select {
+        font-size: 16px;
+    }
+
+    /* Modal: never wider than the viewport, scroll its body */
+    .modal-content {
+        width: calc(100vw - 24px);
+        max-width: calc(100vw - 24px);
+        max-height: calc(100dvh - 32px);
+    }
+
+    /* Message attachment chips: cap name width so the row wraps cleanly */
+    .message-attachment-chip {
+        max-width: 70vw;
+    }
+    .message-attachment-name {
+        max-width: 55vw;
+    }
+}
+
+/* ── Small phone (≤ 480px) ── */
+@media (max-width: 480px) {
+    .admin-page,
+    .settings-page,
+    .help-page {
+        padding-left: 0.875rem;
+        padding-right: 0.875rem;
+    }
+    .admin-header h1,
+    .help-hero h1 {
+        font-size: 22px;
+    }
+    .admin-stats-grid {
+        grid-template-columns: 1fr;
+    }
+    /* Chat composer: tighten paddings, give attachment names more room */
+    .input-wrapper {
+        padding: 8px;
+    }
+    .composer-attachment-card {
+        padding: 8px 10px;
+    }
+    .composer-attachment-name {
+        max-width: 55vw;
+    }
+    /* Suggestion cards on empty chat: stack full-width */
+    .suggestion-cards {
+        grid-template-columns: 1fr;
+    }
+    /* Toast container: leave room for bottom nav */
+    .toast-container {
+        left: 12px;
+        right: 12px;
+        bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+        max-width: none;
+    }
+}
+
+/* ── Tiny phone (≤ 360px) ── */
+@media (max-width: 360px) {
+    .chat-header {
+        padding-left: 8px;
+        padding-right: 8px;
+        gap: 6px;
+    }
+    .chat-header h2 {
+        font-size: 13px;
+        max-width: 40vw;
+    }
+    .help-hero h1 {
+        font-size: 20px;
+    }
+}
+
+/* ── Landscape phone: sidebar drawer takes full width, hide bottom nav ── */
+@media (max-height: 480px) and (orientation: landscape) {
+    .app-sidebar {
+        width: min(280px, 70vw);
+    }
+}
+
+/* ============================================================
+   ░░  MOBILE MOTION & POLISH  ░░
+   Smooth, native-feeling transitions for phones.
+   - Hardware-accelerated transforms only (no layout thrash)
+   - System easing curves (iOS spring + Material standard)
+   - Respects prefers-reduced-motion (no overrides)
+   - Phone-only (≤768px) so desktop micro-interactions remain
+   ============================================================ */
+
+/* Standard easing tokens — match these to feel consistent. */
+:root {
+    --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);     /* page/sheet enter */
+    --ease-out-snap: cubic-bezier(0.34, 1.2, 0.64, 1);   /* button press release */
+    --ease-in-out:   cubic-bezier(0.4, 0, 0.2, 1);       /* Material default */
+}
+
+@media (max-width: 768px) {
+
+    /* ── Page enter: subtle fade + lift on every top-level container ── */
+    .auth-page,
+    .admin-page,
+    .settings-page,
+    .help-page,
+    .chat-container,
+    .not-found-page,
+    .dashboard-root {
+        animation: pageEnter 0.42s var(--ease-out-soft) both;
+        will-change: transform, opacity;
+    }
+    @keyframes pageEnter {
+        from { opacity: 0; transform: translate3d(0, 8px, 0); }
+        to   { opacity: 1; transform: translate3d(0, 0, 0); }
+    }
+
+    /* ── Auth pages: staggered field entrance ── */
+    .auth-card {
+        animation: cardEnter 0.5s var(--ease-out-soft) both;
+    }
+    .auth-card-header,
+    .auth-card form > *,
+    .oauth-buttons,
+    .auth-card-footer {
+        animation: fieldRise 0.5s var(--ease-out-soft) both;
+    }
+    .auth-card-header { animation-delay: 0.04s; }
+    .auth-card form > *:nth-child(1) { animation-delay: 0.10s; }
+    .auth-card form > *:nth-child(2) { animation-delay: 0.14s; }
+    .auth-card form > *:nth-child(3) { animation-delay: 0.18s; }
+    .auth-card form > *:nth-child(4) { animation-delay: 0.22s; }
+    .auth-card form > *:nth-child(5) { animation-delay: 0.26s; }
+    .oauth-buttons     { animation-delay: 0.30s; }
+    .auth-card-footer  { animation-delay: 0.34s; }
+    @keyframes cardEnter {
+        from { opacity: 0; transform: translate3d(0, 16px, 0) scale(0.98); }
+        to   { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+    }
+    @keyframes fieldRise {
+        from { opacity: 0; transform: translate3d(0, 10px, 0); }
+        to   { opacity: 1; transform: translate3d(0, 0, 0); }
+    }
+
+    /* ── Inputs: smoother focus glow without jitter ── */
+    .auth-card input,
+    .input-wrapper,
+    .help-search,
+    .docs-search-wrap {
+        transition:
+                border-color 0.2s var(--ease-in-out),
+                box-shadow 0.25s var(--ease-in-out),
+                background-color 0.2s var(--ease-in-out);
+    }
+
+    /* ── Buttons: tactile press feedback, no hover lift (phones don't hover) ── */
+    .btn-primary,
+    .btn-oauth,
+    .btn-secondary,
+    .send-btn,
+    .chat-header-btn,
+    .input-btn,
+    .action-btn,
+    .feedback-btn,
+    .top-nav-btn,
+    .help-tile,
+    .suggestion-card {
+        transition:
+                transform 0.18s var(--ease-out-snap),
+                background-color 0.2s var(--ease-in-out),
+                box-shadow 0.2s var(--ease-in-out),
+                border-color 0.2s var(--ease-in-out);
+        -webkit-tap-highlight-color: transparent;
+    }
+    .btn-primary:active,
+    .btn-oauth:active,
+    .btn-secondary:active,
+    .send-btn:active,
+    .chat-header-btn:active,
+    .input-btn:active,
+    .action-btn:active,
+    .feedback-btn:active,
+    .top-nav-btn:active,
+    .help-tile:active,
+    .suggestion-card:active {
+        transform: scale(0.96);
+    }
+
+    /* Disable :hover-driven lifts on touch devices (they get stuck) */
+    .btn-primary:hover,
+    .btn-oauth:hover,
+    .send-btn:hover,
+    .help-tile:hover,
+    .suggestion-card:hover,
+    .composer-attachment-card:hover,
+    .feedback-btn:hover,
+    .action-btn:hover {
+        transform: none !important;
+        box-shadow: inherit;
+    }
+
+    /* ── Sidebar drawer: iOS-style spring slide ── */
+    .app-sidebar,
+    .sidebar {
+        transition: transform 0.32s var(--ease-out-soft);
+    }
+    .sidebar-backdrop {
+        transition: opacity 0.28s var(--ease-in-out);
+    }
+
+    /* ── Documents panel: slide up + fade ── */
+    .context-panel,
+    .docs-panel-overlay {
+        transition:
+                transform 0.32s var(--ease-out-soft),
+                opacity 0.24s var(--ease-in-out);
+    }
+
+    /* ── Bottom nav: respect safe area, smooth icon scale on active ── */
+    .bottom-nav-item {
+        transition:
+                color 0.2s var(--ease-in-out),
+                transform 0.18s var(--ease-out-snap);
+    }
+    .bottom-nav-item:active {
+        transform: scale(0.92);
+    }
+    .bottom-nav-item.active .material-symbols-outlined {
+        animation: bumpIcon 0.32s var(--ease-out-snap);
+    }
+    @keyframes bumpIcon {
+        0%   { transform: scale(1); }
+        50%  { transform: scale(1.15); }
+        100% { transform: scale(1); }
+    }
+
+    /* ── Chat messages: gentle slide-in, only animate the last ── */
+    .message-bubble-wrap {
+        animation: msgIn 0.32s var(--ease-out-soft) both;
+    }
+    @keyframes msgIn {
+        from { opacity: 0; transform: translate3d(0, 6px, 0); }
+        to   { opacity: 1; transform: translate3d(0, 0, 0); }
+    }
+
+    /* ── Composer: smooth grow when typing multi-line ── */
+    .input-wrapper textarea {
+        transition: height 0.18s var(--ease-in-out);
+    }
+    .input-wrapper {
+        transition:
+                border-color 0.2s var(--ease-in-out),
+                box-shadow 0.25s var(--ease-in-out),
+                transform 0.2s var(--ease-out-soft);
+    }
+    .input-wrapper:focus-within {
+        transform: translate3d(0, -1px, 0);
+    }
+
+    /* ── Composer attachment chip pop-in (lighter than desktop) ── */
+    .composer-attachment-card {
+        animation: chipPop 0.28s var(--ease-out-snap) both;
+    }
+    @keyframes chipPop {
+        from { opacity: 0; transform: scale(0.92) translate3d(0, 4px, 0); }
+        to   { opacity: 1; transform: scale(1) translate3d(0, 0, 0); }
+    }
+
+    /* ── Suggestion cards: staggered entrance on empty chat ── */
+    .suggestion-cards > * {
+        animation: fieldRise 0.42s var(--ease-out-soft) both;
+    }
+    .suggestion-cards > *:nth-child(1) { animation-delay: 0.05s; }
+    .suggestion-cards > *:nth-child(2) { animation-delay: 0.10s; }
+    .suggestion-cards > *:nth-child(3) { animation-delay: 0.15s; }
+    .suggestion-cards > *:nth-child(4) { animation-delay: 0.20s; }
+
+    /* ── Tabs / chips: smooth underline & color change ── */
+    .settings-tab,
+    .help-tile,
+    .source-chip {
+        transition:
+                color 0.2s var(--ease-in-out),
+                background-color 0.2s var(--ease-in-out),
+                border-color 0.2s var(--ease-in-out),
+                transform 0.18s var(--ease-out-snap);
+    }
+    .settings-tab.active::after {
+        transition: transform 0.28s var(--ease-out-soft);
+    }
+
+    /* ── Modal: scale-in instead of pop ── */
+    .modal-overlay {
+        animation: fadeIn 0.2s var(--ease-in-out);
+    }
+    .modal-content,
+    .legal-modal-content {
+        animation: modalIn 0.32s var(--ease-out-soft) both;
+    }
+    @keyframes modalIn {
+        from { opacity: 0; transform: translate3d(0, 12px, 0) scale(0.97); }
+        to   { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+    }
+
+    /* ── Toast: smoother spring from the bottom ── */
+    .toast {
+        animation: toastInPhone 0.4s var(--ease-out-soft);
+    }
+    @keyframes toastInPhone {
+        from { opacity: 0; transform: translate3d(0, 24px, 0) scale(0.96); }
+        to   { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+    }
+
+    /* ── Scrollers feel smoother with momentum + hidden tracks ── */
+    .admin-page,
+    .settings-page,
+    .help-page,
+    .chat-container,
+    .auth-right,
+    .messages-list,
+    .docs-panel-content,
+    .sidebar-conversation-list {
+        -webkit-overflow-scrolling: touch;
+        scroll-behavior: smooth;
+        overscroll-behavior: contain;
+    }
+
+    /* ── Stop heavy backdrop-blur effects on phone (battery + jank) ── */
+    .input-wrapper,
+    .bottom-nav,
+    .top-nav-bar,
+    .chat-header,
+    .modal-overlay,
+    .toast {
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+    }
+}
+
+/* ── Honor accessibility preferences ── */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+    }
+}
