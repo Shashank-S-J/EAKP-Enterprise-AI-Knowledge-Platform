@@ -31,6 +31,30 @@ function CodeBlock({ children, className, ...props }) {
     );
 }
 
+// Normalize assistant content so paragraphs render reliably.
+//
+// LLMs frequently emit a single "\n" between sentences instead of the
+// blank line markdown needs to start a new paragraph. The result is one
+// dense wall of text. We insert a blank line between consecutive prose
+// lines while leaving code fences, lists, headings, and blockquotes alone.
+function normalizeAssistantMarkdown(text) {
+    if (!text) return text;
+    const parts = text.split(/(```[\s\S]*?```|~~~[\s\S]*?~~~)/g);
+    return parts
+        .map((part, i) => {
+            // odd indices are fenced code blocks — keep as-is
+            if (i % 2 === 1) return part;
+            // Turn a lone "\n" between two non-empty lines into "\n\n",
+            // unless the next line is a list item, heading, blockquote,
+            // table row, or another blank line.
+            return part.replace(
+                /([^\n])\n(?!\n|[-*+]\s|\d+\.\s|#|>|\||\s*$)/g,
+                '$1\n\n'
+            );
+        })
+        .join('');
+}
+
 function formatTimestamp(iso) {
     if (!iso) return '';
     const d = new Date(iso);
@@ -119,7 +143,7 @@ export default function MessageBubble({ message, onRetry, onEdit, conversationId
                     <div className="message-content">
                         {isUser ? <p>{content}</p> : (
                             <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]} components={mdComponents}>
-                                {content}
+                                {normalizeAssistantMarkdown(content)}
                             </ReactMarkdown>
                         )}
                     </div>

@@ -665,7 +665,15 @@
     color: var(--text-primary);
 }
 
-/* -- Register Left Panel (Showcase variant) -- */
+/* -- Register Left Panel (Showcase variant) --
+ *
+ * NOTE: This panel must inherit `display: none` from `.auth-left` on
+ * mobile. Previously we set `display: flex` here unconditionally, which
+ * forced the showcase panel to appear on top of the registration form
+ * on phones — the "two sections look bad" report. The desktop unhide
+ * happens in the @media (min-width: 1024px) rule lower down, alongside
+ * the login panel.
+ */
 .auth-left--register {
     background: linear-gradient(
             135deg,
@@ -673,7 +681,6 @@
             rgba(22, 33, 62, 0.9),
             rgba(15, 52, 96, 0.7)
     );
-    display: flex;
     flex-direction: column;
     justify-content: space-between;
     padding: 2.5rem 3rem;
@@ -10483,5 +10490,61 @@ textarea:focus-visible {
 @media (max-width: 380px) {
     .chat-page-root {
         padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px));
+    }
+}
+
+
+/* ════════════════════════════════════════════════════════════════ */
+/* PHASE 13 — CHAT MOBILE LAYOUT + REGISTER MOBILE FINAL FIX         */
+/*                                                                  */
+/* Bugs the user is still hitting:                                  */
+/*                                                                  */
+/* (A) Register page mobile shows TWO panels (showcase + form)      */
+/*     stacked. Root cause: `.auth-left--register { display: flex }`*/
+/*     was unscoped, overriding the default `.auth-left {           */
+/*     display: none }`. Already corrected above; this block adds a */
+/*     hard guard in case any future override resets it.            */
+/*                                                                  */
+/* (B) Chat mobile screen looks "blank" — really, the composer is   */
+/*     squeezed into a sliver because TWO bottom-clearance rules    */
+/*     stack:                                                       */
+/*       • `.chat-page-root` adds ~64px (Phase 12)                  */
+/*       • `.main-content`  adds ~80px (old shared rule)            */
+/*     Total = 144px stolen from the chat viewport. On a 720-tall   */
+/*     Android phone with software nav, that leaves ~150px for      */
+/*     messages, which reads as "empty chat area" to the user.      */
+/*     Neutralize `.main-content` padding-bottom inside chat —      */
+/*     the chat-page-root rule already reserves space for BottomNav.*/
+/* ════════════════════════════════════════════════════════════════ */
+
+/* (A) Belt-and-braces hide of the register showcase panel on mobile */
+@media (max-width: 1023px) {
+    .auth-left.auth-left--register,
+    .auth-left.auth-left--login {
+        display: none !important;
+    }
+}
+
+/* (B) Chat: cancel the legacy .main-content bottom padding inside the
+       chat layout. The bottom-nav clearance is handled by
+       .chat-page-root padding-bottom. Stacking both squeezes the
+       composer off-screen on tall-but-narrow phones. */
+@media (max-width: 768px) {
+    .chat-layout .main-content,
+    .chat-page-root .main-content {
+        padding-bottom: 0 !important;
+    }
+    /* Give the composer a touch of breathing room above the BottomNav
+       gap so its focus ring + soft shadow don't visually clip. */
+    .chat-page-root .input-area {
+        padding-bottom: 14px;
+    }
+    /* Make absolutely sure the empty-state illustration + composer fit
+       on small screens without inner scrolling stealing the composer. */
+    .chat-container {
+        min-height: 0;
+    }
+    .messages-area {
+        min-height: 0;
     }
 }

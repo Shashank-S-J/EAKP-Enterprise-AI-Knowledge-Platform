@@ -179,8 +179,22 @@ public class ChatService {
                         // Documents from OTHER chats that the retrieval pipeline
                         // surfaced as relevant. The LLM uses these to proactively
                         // suggest "I also have <X> on this topic — want me to use it?".
+                        //
+                        // Suppress when the reader is clearly anchored to their
+                        // current attachment(s):
+                        //   • a bare/focused reference ("explain this") — they
+                        //     don't care about other workspace docs
+                        //   • a single file is attached — same reasoning
+                        // In those cases mentioning an unrelated workspace doc
+                        // (e.g. an architecture plan while they're reading a
+                        // resume) reads as a non-sequitur, not a helpful nudge.
                         java.util.Set<String> attachedSet = new java.util.HashSet<>(attachedFiles);
-                        java.util.List<String> relatedFiles = trimmedContext.stream()
+                        boolean suppressRelated =
+                                focusedFilename != null
+                                        || (attachedFiles != null && attachedFiles.size() == 1);
+                        java.util.List<String> relatedFiles = suppressRelated
+                                ? java.util.List.of()
+                                : trimmedContext.stream()
                                 .map(RetrievedChunk::source)
                                 .filter(java.util.Objects::nonNull)
                                 .filter(s -> !"unknown".equals(s))
@@ -598,9 +612,13 @@ public class ChatService {
                    "Source A says X; Source B says Y."
                 7. Don't speculate, infer hidden intent, or extrapolate past
                    what the text actually says.
-                8. If a POTENTIALLY RELATED DOCUMENT (other chats) looks
-                   directly useful, end with: "I also have <filename> on this
-                   topic — want me to include it?"
+                8. If — and only if — a POTENTIALLY RELATED DOCUMENT is on the
+                   SAME topic the reader just asked about (not just present in
+                   the workspace), end with one short line: "I also have
+                   <filename> on this — want me to include it?" Otherwise stay
+                   silent about it. Never write a disclaimer like "I don't
+                   have information about <other file>" — if it's not
+                   relevant, simply don't mention it.
 
                 CALIBRATE YOUR LANGUAGE TO THE EVIDENCE
                 • Direct evidence in the chunks → state it plainly:
