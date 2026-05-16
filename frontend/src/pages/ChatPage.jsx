@@ -48,8 +48,23 @@ export default function ChatPage() {
                     navigate('/chat', { replace: true });
                 }
             });
-        } else if (!conversationId) {
-            setActiveConversation(null);
+        } else if (!conversationId && activeConversationId) {
+            // Race protection: when the composer creates a new conversation it
+            // sets activeConversationId in the store synchronously, then calls
+            // navigate(). Because of the `await` in createConversation, those
+            // two updates can land in separate React commits. If we naively
+            // cleared activeConvId here we'd wipe the user message, the
+            // streaming content, and any just-uploaded doc chips mid-flight.
+            // Detect the just-created case (the conv exists in our list) and
+            // sync the URL to it instead of clobbering the store.
+            const exists = useChatStore.getState().conversations.some(
+                (c) => c.id === activeConversationId
+            );
+            if (exists) {
+                navigate(`/chat/${activeConversationId}`, { replace: true });
+            } else {
+                setActiveConversation(null);
+            }
         }
     }, [conversationId, activeConversationId, loadMessages, setActiveConversation, navigate]);
 

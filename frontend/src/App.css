@@ -10227,3 +10227,176 @@ textarea:focus-visible {
         margin: 1rem;
     }
 }
+/* ════════════════════════════════════════════════════════════════ */
+/* PHASE 10 — REGISTER PAGE MOBILE FIXES                             */
+/* User report: register page is "not proper" on mobile.             */
+/* ════════════════════════════════════════════════════════════════ */
+
+/* FIX A: Stack password + confirm earlier.
+   Previously the 2-col grid only collapsed at <=540px, so every
+   phone between 541-767px (iPhone Pro Max landscape, big Androids,
+   foldables, small tablets in portrait) rendered two ~140px-wide
+   inputs that clipped the eye-toggle and broke alignment.
+   Stack the whole grid through 768px to match the rest of the
+   responsive auth rules. */
+@media (max-width: 768px) {
+    .auth-card form > div[style*="gridTemplateColumns"] {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 0 !important;
+        overflow: visible !important;
+    }
+    .auth-card form > div[style*="gridTemplateColumns"] > .form-group {
+        margin-bottom: 14px;
+    }
+    .auth-card form > div[style*="gridTemplateColumns"] > .form-group:last-child {
+        margin-bottom: 0;
+    }
+}
+
+/* FIX B: Password-toggle tap area.
+   Phase 9 forced .password-toggle to 44x44 on touch devices, but the
+   surrounding input is only ~42px tall. The button rendered as a
+   square sticking 2-3px out of the input's top/bottom border on
+   every password field.
+   Keep the icon visually 28x28 (so it fits inside the input ring)
+   while extending the *hit* area via a transparent ::before overlay. */
+@media (hover: none) and (pointer: coarse) {
+    .form-group .password-toggle {
+        width: 28px !important;
+        height: 28px !important;
+        min-width: 28px !important;
+        min-height: 28px !important;
+        right: 6px;
+        position: absolute;
+    }
+    .form-group .password-toggle::before {
+        content: "";
+        position: absolute;
+        inset: -8px -8px -8px -8px;
+        /* Transparent 44x44 hit target without breaking the input ring */
+    }
+}
+
+/* FIX C: Terms-of-Service checkbox row on narrow phones.
+   Long ToS + Privacy labels wrap mid-button, leaving an orphaned
+   "Policy." on a line by itself and squeezing the label against the
+   checkbox. Tighten line-height and allow text-wrap: pretty so the
+   label breaks naturally. */
+@media (max-width: 540px) {
+    .terms-check {
+        margin: 12px 0 16px;
+        gap: 10px;
+    }
+    .terms-check label {
+        font-size: 12.5px;
+        line-height: 1.55;
+        text-wrap: pretty;
+    }
+    .terms-check .link-btn {
+        font-size: inherit;
+        text-decoration: underline;
+        text-decoration-color: rgba(207, 188, 255, 0.35);
+        text-underline-offset: 2px;
+    }
+}
+
+/* FIX D: Password strength bars on tiny screens.
+   At <=360px the four 1fr bars compress to ~50px each with 4px gaps;
+   the strength label "Very Strong" no longer fits next to "Security
+   Strength". Stack the header lines and slim the bars. */
+@media (max-width: 380px) {
+    .password-strength .strength-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+    }
+    .password-strength .strength-bars {
+        height: 5px;
+    }
+}
+
+/* FIX E: Register form vertical density.
+   With 5 form-groups + strength meter + terms + button + OAuth + footer,
+   the card overflows on iPhone SE (568px height landscape) and shorter
+   Androids. Trim spacing slightly so the primary CTA stays above the
+   fold without forcing an inner scroll. */
+@media (max-width: 768px) {
+    .auth-card form .form-group {
+        margin-bottom: 12px;
+    }
+    .auth-card form .password-strength {
+        padding: 2px 0 6px;
+    }
+    .auth-card .divider {
+        margin: 12px 0;
+    }
+}
+
+/* FIX F: Make sure the auth-card itself never causes horizontal
+   scroll on register (the widest field, "Create your team's
+   workspace" placeholder, can push input width via min-content). */
+@media (max-width: 540px) {
+    .auth-card,
+    .auth-card form,
+    .auth-card .form-group,
+    .auth-card .input-wrap {
+        max-width: 100%;
+        min-width: 0;
+    }
+    .auth-card input {
+        min-width: 0;
+        width: 100%;
+    }
+}
+
+
+/* ════════════════════════════════════════════════════════════════ */
+/* PHASE 11 — CHAT AREA POLISH                                       */
+/* Smooth entrance for composer chips, streaming bubble, attachment  */
+/* badges on the user message.                                       */
+/* ════════════════════════════════════════════════════════════════ */
+
+@keyframes eakp-chip-in {
+    0%   { opacity: 0; transform: translateY(6px) scale(0.96); }
+    100% { opacity: 1; transform: translateY(0)    scale(1); }
+}
+.composer-attachments .composer-attachment-card {
+    animation: eakp-chip-in 280ms var(--ease-out) both;
+}
+.message-attachments .message-attachment-chip {
+    animation: eakp-chip-in 240ms var(--ease-out) both;
+}
+.message-attachments .message-attachment-chip:nth-child(2) { animation-delay: 60ms; }
+.message-attachments .message-attachment-chip:nth-child(3) { animation-delay: 120ms; }
+.message-attachments .message-attachment-chip:nth-child(4) { animation-delay: 180ms; }
+.message-attachments .message-attachment-chip:nth-child(n+5) { animation-delay: 220ms; }
+
+/* Smoother streaming bubble entrance — replaces the abrupt swap from
+   thinking-orb to streaming-content. */
+@keyframes eakp-stream-in {
+    0%   { opacity: 0; transform: translateY(8px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+.messages-area .message.assistant[aria-live="polite"] {
+    animation: eakp-stream-in 260ms var(--ease-out) both;
+}
+
+/* Subtle pulse on the input-status banner while generating so the
+   "EAKP is generating a response…" line feels alive. */
+@keyframes eakp-status-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(207, 188, 255, 0.0); }
+    50%      { box-shadow: 0 0 0 4px rgba(207, 188, 255, 0.08); }
+}
+.input-status-banner {
+    animation: eakp-status-pulse 2.4s var(--ease-out) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .composer-attachments .composer-attachment-card,
+    .message-attachments .message-attachment-chip,
+    .messages-area .message.assistant[aria-live="polite"],
+    .input-status-banner {
+        animation: none !important;
+    }
+}
