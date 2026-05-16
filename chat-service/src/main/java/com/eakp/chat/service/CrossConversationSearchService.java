@@ -65,17 +65,29 @@ public class CrossConversationSearchService {
     }
 
     /**
-     * Retrieve past-message snippets relevant to the query.
+     * Retrieve past-message snippets relevant to the query, scoped to a
+     * single user inside a workspace. Other users' chats are never returned.
      *
      * @param query          The user's question (raw).
      * @param workspaceId    Workspace scope (tenant isolation).
-     * @param currentConvId  Conversation to EXCLUDE — we want history, not the current chat.
-     * @return Up to {@code topK} snippets ordered by relevance (FTS rank), then recency.
+     * @param userId         User scope — only THIS user's conversations are
+     *                       searched. Required (null returns empty).
+     * @param currentConvId  Conversation to EXCLUDE — we want history, not
+     *                       the current chat.
+     * @return Up to {@code topK} snippets ordered by relevance, then recency.
      */
     public List<PastMessage> findRelevantPastMessages(String query,
                                                       UUID workspaceId,
+                                                      UUID userId,
                                                       UUID currentConvId) {
         if (query == null || query.isBlank()) return List.of();
+        if (userId == null) {
+            // Defensive: cross-conv search MUST be user-scoped. Returning
+            // empty is the correct behaviour when the caller doesn't know
+            // who the user is — otherwise we'd leak other users' messages.
+            log.warn("Cross-conv search called without userId — refusing to search");
+            return List.of();
+        }
 
         TemporalScope scope = parseTemporalScope(query);
         // Strip temporal words so they don't dominate FTS ranking
@@ -94,12 +106,14 @@ public class CrossConversationSearchService {
                 FROM messages m
                 JOIN conversations c ON c.id = m.conversation_id
                 WHERE c.workspace_id = ?::uuid
+                  AND c.user_id      = ?::uuid
                   AND to_tsvector('english', m.content)
                       @@ plainto_tsquery('english', ?)
                 """);
             List<Object> args = new ArrayList<>();
             args.add(ftsQuery);
             args.add(workspaceId.toString());
+            args.add(userId.toString());
             args.add(ftsQuery);
 
             if (currentConvId != null) {

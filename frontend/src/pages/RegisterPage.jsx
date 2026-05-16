@@ -7,6 +7,11 @@ import LegalModal from '../components/shared/LegalModal';
 import Logo from '../components/shared/Logo';
 import ThemeToggle from '../components/auth/ThemeToggle';
 import { useGoogleIdentity } from '../hooks/useGoogleIdentity';
+import {
+    redirectToGoogleAuth,
+    consumeGoogleIdTokenFromUrl,
+    shouldSkipGoogleOneTap,
+} from '../utils/googleOAuth';
 
 function getPasswordStrength(pw) {
     if (!pw) return { level: 0, label: '' };
@@ -56,6 +61,26 @@ export default function RegisterPage() {
                 .then(finishAuth)
                 .catch((err) => setError(err.message || 'GitHub sign-up failed'))
                 .finally(() => setLoading(false));
+            return;
+        }
+        // Handle Google OAuth redirect callback (mobile-friendly path).
+        // Google returns the ID token in the URL fragment.
+        if (oauthProvider === 'google') {
+            try {
+                const result = consumeGoogleIdTokenFromUrl();
+                if (result?.idToken) {
+                    // eslint-disable-next-line react-hooks/set-state-in-effect
+                    setLoading(true);
+                    setError('');
+                    globalThis.history.replaceState({}, '', '/register');
+                    auth.googleCallback(result.idToken, result.workspaceName)
+                        .then(finishAuth)
+                        .catch((err) => setError(err.message || 'Google sign-up failed'))
+                        .finally(() => setLoading(false));
+                }
+            } catch (err) {
+                setError(err.message || 'Google sign-up failed');
+            }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional mount-only OAuth callback
     }, []);
@@ -97,10 +122,27 @@ export default function RegisterPage() {
     const handleOAuthGoogle = async () => {
         if (!agreed) { setError('Please agree to the Terms & Privacy Policy to continue.'); return; }
         setError('');
+
+        // Mobile / in-app webviews: skip One Tap entirely. It never displays
+        // there, just yielded "dismissed" errors. Use OpenID Connect redirect.
+        if (shouldSkipGoogleOneTap()) {
+            setLoading(true);
+            try {
+                redirectToGoogleAuth('/register?oauth=google', form.workspaceName);
+            } catch (err) {
+                setError(err.message || 'Google sign-up is not configured.');
+                setLoading(false);
+            }
+            return;
+        }
+
         setLoading(true);
         try {
             const { google } = globalThis;
-            if (!gsiReady || !google?.accounts?.id) { setError('Google Sign-In is still loading. Please try again in a moment.'); setLoading(false); return; }
+            if (!gsiReady || !google?.accounts?.id) {
+                redirectToGoogleAuth('/register?oauth=google', form.workspaceName);
+                return;
+            }
             google.accounts.id.initialize({
                 client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || '',
                 callback: async (response) => {
@@ -110,7 +152,17 @@ export default function RegisterPage() {
                     } catch (err) { setError(err.message || 'OAuth sign-up failed'); } finally { setLoading(false); }
                 },
             });
-            google.accounts.id.prompt((n) => { if (n.isNotDisplayed() || n.isSkippedMoment()) { setError('Google sign-in was dismissed.'); setLoading(false); } });
+            google.accounts.id.prompt((n) => {
+                if (n.isNotDisplayed() || n.isSkippedMoment()) {
+                    // One Tap unavailable — fall back to redirect (mobile-safe).
+                    try {
+                        redirectToGoogleAuth('/register?oauth=google', form.workspaceName);
+                    } catch (err) {
+                        setError(err.message || 'Google sign-up is not configured.');
+                        setLoading(false);
+                    }
+                }
+            });
         } catch (err) { setError(err.message || 'Google sign-up failed'); setLoading(false); }
     };
 
@@ -222,7 +274,7 @@ export default function RegisterPage() {
                             </div>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, minWidth: 0, overflow: 'hidden' }}>
+                        <div className="reg-password-grid">
                             <div className="form-group">
                                 <label htmlFor="reg-password">Password</label>
                                 <div className="input-wrap">

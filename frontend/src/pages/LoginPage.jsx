@@ -7,6 +7,11 @@ import LegalModal from '../components/shared/LegalModal';
 import Logo from '../components/shared/Logo';
 import ThemeToggle from '../components/auth/ThemeToggle';
 import { useGoogleIdentity } from '../hooks/useGoogleIdentity';
+import {
+    redirectToGoogleAuth,
+    consumeGoogleIdTokenFromUrl,
+    shouldSkipGoogleOneTap,
+} from '../utils/googleOAuth';
 
 // Whitelist of internal paths the login redirect is allowed to send users to.
 // Prevents open-redirect via crafted ?from= or location.state values.
@@ -63,6 +68,27 @@ export default function LoginPage() {
                 .then(finishAuth)
                 .catch((err) => setError(err.message || 'GitHub login failed'))
                 .finally(() => setLoading(false));
+            return;
+        }
+        // Handle Google OAuth redirect callback (mobile-friendly path).
+        // Google returns the ID token in the URL fragment.
+        if (oauthProvider === 'google') {
+            try {
+                const result = consumeGoogleIdTokenFromUrl();
+                if (result?.idToken) {
+                    // eslint-disable-next-line react-hooks/set-state-in-effect
+                    setLoading(true);
+                    setError('');
+                    // Strip the `?oauth=google` query too.
+                    globalThis.history.replaceState({}, '', '/login');
+                    auth.googleCallback(result.idToken)
+                        .then(finishAuth)
+                        .catch((err) => setError(err.message || 'Google login failed'))
+                        .finally(() => setLoading(false));
+                }
+            } catch (err) {
+                setError(err.message || 'Google login failed');
+            }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional mount-only OAuth callback
     }, []);
@@ -94,12 +120,28 @@ export default function LoginPage() {
     const handleOAuthGoogle = async () => {
         if (!ensureAgreed()) return;
         setError('');
+
+        // Mobile / in-app webviews: skip One Tap entirely — it never displays
+        // there and the user just sees a "dismissed" error. Go straight to
+        // the OpenID Connect redirect flow (same one we use as a fallback
+        // on desktop when One Tap fails).
+        if (shouldSkipGoogleOneTap()) {
+            setLoading(true);
+            try {
+                redirectToGoogleAuth('/login?oauth=google');
+            } catch (err) {
+                setError(err.message || 'Google login is not configured.');
+                setLoading(false);
+            }
+            return;
+        }
+
         setLoading(true);
         try {
             const { google } = globalThis;
             if (!gsiReady || !google?.accounts?.id) {
-                setError('Google Sign-In is still loading. Please try again in a moment.');
-                setLoading(false);
+                // GSI script not ready — fall back to redirect (works everywhere).
+                redirectToGoogleAuth('/login?oauth=google');
                 return;
             }
             google.accounts.id.initialize({
@@ -117,8 +159,14 @@ export default function LoginPage() {
             });
             google.accounts.id.prompt((notification) => {
                 if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-                    setError('Google sign-in was dismissed.');
-                    setLoading(false);
+                    // One Tap unavailable on this browser — fall back to redirect
+                    // instead of erroring out. This is what made mobile login fail.
+                    try {
+                        redirectToGoogleAuth('/login?oauth=google');
+                    } catch (err) {
+                        setError(err.message || 'Google login is not configured.');
+                        setLoading(false);
+                    }
                 }
             });
         } catch (err) {

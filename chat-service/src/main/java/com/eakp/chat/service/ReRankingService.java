@@ -43,7 +43,7 @@ public class ReRankingService {
     @CircuitBreaker(name = "llmRerank", fallbackMethod = "rerankFallback")
     @Timed(value = "rag.rerank.latency", description = "Re-ranking latency")
     public List<RetrievedChunk> rerank(String query,
-                                        List<ScoredChunk> candidates) {
+                                       List<ScoredChunk> candidates) {
         if (candidates.isEmpty()) return List.of();
 
         return switch (rerankerType.toLowerCase()) {
@@ -60,8 +60,8 @@ public class ReRankingService {
 
     @SuppressWarnings("unused")
     private List<RetrievedChunk> rerankFallback(String query,
-                                                  List<ScoredChunk> candidates,
-                                                  Throwable t) {
+                                                List<ScoredChunk> candidates,
+                                                Throwable t) {
         log.warn("Rerank circuit breaker triggered: {} — using passthrough", t.getMessage());
         return passthroughRerank(candidates);
     }
@@ -87,10 +87,10 @@ public class ReRankingService {
      * Runs candidate chunks in a single batched prompt for efficiency.
      */
     private List<RetrievedChunk> llmRerank(String query,
-                                            List<ScoredChunk> candidates) {
-        if (candidates.size() <= topKRerank) {
-            return passthroughRerank(candidates);  // no point re-ranking if already small
-        }
+                                           List<ScoredChunk> candidates) {
+        // Always rerank, even small lists. RRF ordering is noisy — skipping
+        // rerank for "small" lists used to ship whichever chunk happened to
+        // score high on BM25, which is often wrong for paraphrased queries.
 
         StringBuilder prompt = new StringBuilder();
         prompt.append("Score each passage's relevance to the query.\n");
@@ -100,9 +100,11 @@ public class ReRankingService {
 
         for (int i = 0; i < candidates.size(); i++) {
             prompt.append("Passage ").append(i).append(":\n");
-            // Truncate to 200 chars per chunk to keep prompt manageable
-            String snippet = candidates.get(i).content();
-            if (snippet.length() > 200) snippet = snippet.substring(0, 200) + "...";
+            // Show the FIRST 600 chars + LAST 200 chars of each chunk.
+            // 200-char snippets hide evidence past the lead paragraph; a
+            // head+tail window is the standard fix for "lost in the middle"
+            // failures inside the reranker itself.
+            String snippet = buildSnippet(candidates.get(i).content(), 600, 200);
             prompt.append(snippet).append("\n\n");
         }
 
@@ -147,6 +149,19 @@ public class ReRankingService {
                     e.getMessage());
             return passthroughRerank(candidates);
         }
+    }
+
+    /**
+     * Head + tail snippet. For short chunks returns the chunk as-is; for
+     * long chunks returns first {@code head} chars + {@code tail} chars
+     * joined by an ellipsis marker so the reranker can see both ends.
+     */
+    private static String buildSnippet(String content, int head, int tail) {
+        if (content == null) return "";
+        if (content.length() <= head + tail) return content;
+        return content.substring(0, head)
+                + "\n[…]\n"
+                + content.substring(content.length() - tail);
     }
 
     private List<Double> parseScores(String raw, int expectedSize) {
