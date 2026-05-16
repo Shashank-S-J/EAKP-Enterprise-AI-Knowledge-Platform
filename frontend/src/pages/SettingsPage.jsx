@@ -198,7 +198,7 @@ export default function SettingsPage() {
                 <div className="chat-header">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         {!sidebarOpen && (
-                            <button className="chat-header-btn" onClick={toggleSidebar} title="Open sidebar">
+                            <button className="chat-header-btn" onClick={toggleSidebar} title="Open sidebar" aria-label="Open sidebar">
                                 <span className="material-symbols-outlined">menu</span>
                             </button>
                         )}
@@ -207,7 +207,7 @@ export default function SettingsPage() {
                     </div>
                     <div className="chat-header-actions">
                         <ThemeToggle />
-                        <button className="chat-header-btn" onClick={() => navigate('/chat')} title="Back to chat">
+                        <button className="chat-header-btn" onClick={() => navigate('/chat')} title="Back to chat" aria-label="Back to chat">
                             <span className="material-symbols-outlined">arrow_back</span>
                         </button>
                     </div>

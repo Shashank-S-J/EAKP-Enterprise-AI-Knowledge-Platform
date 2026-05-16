@@ -137,7 +137,7 @@ export default function Sidebar({ onSelectConv, onOpenDocs, docsCount }) {
                     <span className="material-symbols-outlined search-icon" style={{fontSize:18}}>search</span>
                     <input ref={searchRef} type="text" placeholder="Search conversations…" value={search}
                            onChange={(e) => setSearch(e.target.value)} className="search-input" />
-                    {search && <button className="search-clear" onClick={() => setSearch('')}>
+                    {search && <button className="search-clear" onClick={() => setSearch('')} aria-label="Clear search">
                         <span className="material-symbols-outlined" style={{fontSize:16}}>close</span>
                     </button>}
                 </div>
@@ -174,15 +174,15 @@ export default function Sidebar({ onSelectConv, onOpenDocs, docsCount }) {
                                     )}
                                     {deletingId === c.id ? (
                                         <div className="delete-confirm" onClick={(e) => e.stopPropagation()}>
-                                            <button className="confirm-yes" onClick={() => handleDelete(c.id)} title="Confirm delete">
+                                            <button className="confirm-yes" onClick={() => handleDelete(c.id)} title="Confirm delete" aria-label="Confirm delete conversation">
                                                 <span className="material-symbols-outlined" style={{fontSize:16}}>check</span>
                                             </button>
-                                            <button className="confirm-no" onClick={() => setDeletingId(null)} title="Cancel">
+                                            <button className="confirm-no" onClick={() => setDeletingId(null)} title="Cancel" aria-label="Cancel delete">
                                                 <span className="material-symbols-outlined" style={{fontSize:16}}>close</span>
                                             </button>
                                         </div>
                                     ) : (
-                                        <button className="delete-btn" onClick={(e) => { e.stopPropagation(); setDeletingId(c.id); }}>
+                                        <button className="delete-btn" onClick={(e) => { e.stopPropagation(); setDeletingId(c.id); }} aria-label="Delete conversation">
                                             <span className="material-symbols-outlined" style={{fontSize:16}}>delete</span>
                                         </button>
                                     )}
@@ -242,7 +242,7 @@ export default function Sidebar({ onSelectConv, onOpenDocs, docsCount }) {
                             <div className="user-name">{user?.fullName || user?.email}</div>
                             <div className="user-email">{user?.email}</div>
                         </div>
-                        <button className="sidebar-logout" onClick={(e) => { e.stopPropagation(); logout(); }} title="Sign out">
+                        <button className="sidebar-logout" onClick={(e) => { e.stopPropagation(); logout(); }} title="Sign out" aria-label="Sign out">
                             <span className="material-symbols-outlined" style={{fontSize:18}}>logout</span>
                         </button>
                     </div>

@@ -158,16 +158,18 @@ export default function ChatPage() {
                             className={`top-nav-btn ${docsOpen ? 'active' : ''}`}
                             onClick={() => setDocsOpen(!docsOpen)}
                             title="Toggle Knowledge Base"
+                            aria-label="Toggle knowledge base panel"
+                            aria-pressed={docsOpen}
                         >
                             <span className="material-symbols-outlined">library_books</span>
                         </button>
                     </div>
                     <div className="top-nav-user-section">
-                        <button className="top-nav-btn notif-btn" onClick={() => setNotifPulse(false)} title="Notifications">
+                        <button className="top-nav-btn notif-btn" onClick={() => setNotifPulse(false)} title="Notifications" aria-label="Notifications">
                             <span className="material-symbols-outlined">notifications</span>
                             {notifPulse && <span className="notif-dot" />}
                         </button>
-                        <button className="top-nav-btn" onClick={() => navigate('/settings')} title="Settings">
+                        <button className="top-nav-btn" onClick={() => navigate('/settings')} title="Settings" aria-label="Open settings">
                             <span className="material-symbols-outlined">settings</span>
                         </button>
                         <div

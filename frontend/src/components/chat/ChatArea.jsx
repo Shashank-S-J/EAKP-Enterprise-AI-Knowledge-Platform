@@ -6,36 +6,10 @@ import { useNetworkStatus } from "../../hooks/useNetworkStatus";
 import { validateBatch } from "../../utils/fileValidation";
 import { sanitizeInput } from "../../utils/sanitize";
 import MessageBubble from "./MessageBubble";
+import EmptyState from "./EmptyState";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
-
-const SUGGESTIONS = [
-    {
-        icon: "lightbulb",
-        color: "var(--tertiary)",
-        title: "Analyze Trends",
-        desc: "Compare operational costs across periods.",
-    },
-    {
-        icon: "description",
-        color: "var(--accent)",
-        title: "Summarize Document",
-        desc: "Extract key points from uploaded docs.",
-    },
-    {
-        icon: "bar_chart",
-        color: "var(--secondary)",
-        title: "Generate Insights",
-        desc: "Visualize data across regions.",
-    },
-    {
-        icon: "code",
-        color: "var(--danger)",
-        title: "Audit Query",
-        desc: "Review logic for data anomalies.",
-    },
-];
 
 export default function ChatArea({ onNewConv }) {
     const {
@@ -481,41 +455,12 @@ export default function ChatArea({ onNewConv }) {
             >
                 <div className="chat-ambient" />
                 {isEmpty ? (
-                    <div className="empty-state">
-                        <h2>What would you like to know?</h2>
-                        <div className="suggestions">
-                            {SUGGESTIONS.map((s) => (
-                                <div
-                                    key={s.title}
-                                    className="suggestion-card"
-                                    role="button"
-                                    tabIndex={0}
-                                    onClick={() => {
-                                        setInput(s.title + ": " + s.desc);
-                                        setTimeout(() => textareaRef.current?.focus(), 50);
-                                    }}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter" || e.key === " ") {
-                                            e.preventDefault();
-                                            setInput(s.title + ": " + s.desc);
-                                            setTimeout(() => textareaRef.current?.focus(), 50);
-                                        }
-                                    }}
-                                >
-                  <span
-                      className="material-symbols-outlined suggestion-icon"
-                      style={{ color: s.color }}
-                  >
-                    {s.icon}
-                  </span>
-                                    <div>
-                                        <div className="suggestion-title">{s.title}</div>
-                                        <div className="suggestion-desc">{s.desc}</div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+                    <EmptyState
+                        onSelect={(text) => {
+                            setInput(text);
+                            setTimeout(() => textareaRef.current?.focus(), 50);
+                        }}
+                    />
                 ) : (
                     <>
                         {messages.map((m) => {

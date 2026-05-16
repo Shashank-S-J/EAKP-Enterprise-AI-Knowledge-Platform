@@ -206,7 +206,7 @@ export default function DocumentsPanel({ open, onClose }) {
                             style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-primary)', fontSize: 13, padding: '4px 8px' }}
                         />
                         {search && (
-                            <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2 }}>
+                            <button onClick={() => setSearch('')} aria-label="Clear search" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2 }}>
                                 <span className="material-symbols-outlined" style={{ fontSize: 14 }}>close</span>
                             </button>
                         )}
@@ -262,25 +262,25 @@ export default function DocumentsPanel({ open, onClose }) {
                                         </div>
                                     )}
                                 </div>
-                                <button className="context-file-remove" onClick={(e) => { e.stopPropagation(); setDeletingId(d.id); }} title="Remove">
+                                <button className="context-file-remove" onClick={(e) => { e.stopPropagation(); setDeletingId(d.id); }} title="Remove" aria-label={`Remove ${d.filename}`}>
                                     <span className="material-symbols-outlined" style={{ fontSize: 16 }}>close</span>
                                 </button>
                                 {d.status === 'READY' && (
                                     <>
-                                        <button className="context-file-action" onClick={(e) => { e.stopPropagation(); handleDownload(d.id); }} title="Download">
+                                        <button className="context-file-action" onClick={(e) => { e.stopPropagation(); handleDownload(d.id); }} title="Download" aria-label={`Download ${d.filename}`}>
                                             <span className="material-symbols-outlined" style={{ fontSize: 14 }}>download</span>
                                         </button>
-                                        <button className="context-file-action" onClick={(e) => { e.stopPropagation(); handleReingest(d.id); }} title="Re-ingest">
+                                        <button className="context-file-action" onClick={(e) => { e.stopPropagation(); handleReingest(d.id); }} title="Re-ingest" aria-label={`Re-ingest ${d.filename}`}>
                                             <span className="material-symbols-outlined" style={{ fontSize: 14 }}>refresh</span>
                                         </button>
                                     </>
                                 )}
                                 {deletingId === d.id && (
                                     <div className="context-file-delete-confirm" onClick={(e) => e.stopPropagation()}>
-                                        <button className="confirm-yes" onClick={() => handleDelete(d.id)} title="Confirm">
+                                        <button className="confirm-yes" onClick={() => handleDelete(d.id)} title="Confirm" aria-label="Confirm delete">
                                             <span className="material-symbols-outlined" style={{ fontSize: 14 }}>check</span>
                                         </button>
-                                        <button className="confirm-no" onClick={() => setDeletingId(null)} title="Cancel">
+                                        <button className="confirm-no" onClick={() => setDeletingId(null)} title="Cancel" aria-label="Cancel delete">
                                             <span className="material-symbols-outlined" style={{ fontSize: 14 }}>close</span>
                                         </button>
                                     </div>
