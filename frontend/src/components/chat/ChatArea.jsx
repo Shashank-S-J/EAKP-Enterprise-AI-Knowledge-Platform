@@ -112,11 +112,23 @@ export default function ChatArea({ onNewConv }) {
             // soft-fail — not critical for chat flow
         }
     }, []);
+    // Track the previous active conv so we only clear the "un-sent" tracking
+    // when the user genuinely switches between two different conversations.
+    // Clearing on every activeConversationId change races with the
+    // create-conversation-then-navigate flow: an upload that just set
+    // unsentDocIds = [docId] would get wiped the moment the URL caught up.
+    const prevConvIdRef = useRef(null);
     useEffect(() => {
+        const prev = prevConvIdRef.current;
+        if (
+            activeConversationId &&
+            prev &&
+            activeConversationId !== prev
+        ) {
+            setUnsentDocIds([]);
+        }
+        prevConvIdRef.current = activeConversationId;
         loadAttachedDocs(activeConversationId);
-        // Switching chats clears the "un-sent" tracking — those flags only matter
-        // for in-session uploads on the active conversation.
-        setUnsentDocIds([]);
     }, [activeConversationId, loadAttachedDocs]);
 
     // Poll any pending docs (PENDING/PROCESSING) every 3s until READY/FAILED,
@@ -444,7 +456,18 @@ export default function ChatArea({ onNewConv }) {
         [attachedDocs, toast],
     );
 
-    const isEmpty = messages.length === 0 && !activeConversationId;
+    // Empty state only when there's truly nothing happening — no conv, no
+    // messages, no streaming, no pending upload, no just-attached doc.
+    // Without this guard the area can flash to EmptyState during the
+    // first-send / first-upload transition.
+    const isEmpty =
+        messages.length === 0 &&
+        !activeConversationId &&
+        !streaming &&
+        !thinking &&
+        !sending &&
+        pendingUploads.length === 0 &&
+        unsentDocIds.length === 0;
 
     return (
         <div className="chat-container">
