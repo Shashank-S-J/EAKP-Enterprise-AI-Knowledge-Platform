@@ -1,5 +1,5 @@
-﻿@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Inter+Tight:wght@500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=JetBrains+Mono:wght@400;500&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+﻿/* Font stylesheets are now loaded via <link> tags in index.html for non-blocking
+   parallel download. See the <head> section of frontend/index.html. */
 
 /* ──────────────────────────────────────
    Claude-inspired warm palette
@@ -62,6 +62,81 @@
     --font-sans: 'Inter', 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
     --font-display: 'Source Serif 4', 'Inter Tight', Georgia, serif;
     --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+
+    /* ── Fluid type scale (clamp-based, viewport-aware) ── */
+    --text-xs:   clamp(0.75rem, 0.72rem + 0.15vw, 0.8125rem);
+    --text-sm:   clamp(0.8125rem, 0.78rem + 0.18vw, 0.875rem);
+    --text-base: clamp(0.9375rem, 0.90rem + 0.20vw, 1rem);
+    --text-md:   clamp(1rem, 0.96rem + 0.22vw, 1.0625rem);
+    --text-lg:   clamp(1.125rem, 1.06rem + 0.32vw, 1.25rem);
+    --text-xl:   clamp(1.375rem, 1.28rem + 0.50vw, 1.625rem);
+    --text-2xl:  clamp(1.75rem, 1.55rem + 0.95vw, 2.25rem);
+    --text-3xl:  clamp(2.25rem, 1.92rem + 1.55vw, 3rem);
+    --text-4xl:  clamp(2.75rem, 2.20rem + 2.60vw, 4rem);
+    --text-display: clamp(3rem, 2.30rem + 3.40vw, 5rem);
+
+    /* ── Spacing scale (4-pt) ── */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-10: 2.5rem;
+    --space-12: 3rem;
+    --space-16: 4rem;
+    --space-20: 5rem;
+    --space-24: 6rem;
+
+    /* ── Radius scale ── */
+    --radius-xs: 4px;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 20px;
+    --radius-2xl: 28px;
+    --radius-pill: 9999px;
+
+    /* ── Shadow scale (warm-tinted, not black) ── */
+    --shadow-xs: 0 1px 2px rgba(31, 30, 28, 0.10);
+    --shadow-sm: 0 2px 6px rgba(31, 30, 28, 0.14);
+    --shadow-md: 0 8px 24px rgba(31, 30, 28, 0.18);
+    --shadow-lg: 0 16px 44px rgba(31, 30, 28, 0.24), 0 4px 12px rgba(31, 30, 28, 0.12);
+    --shadow-xl: 0 32px 80px rgba(31, 30, 28, 0.32), 0 8px 24px rgba(31, 30, 28, 0.16);
+    --shadow-glow: 0 0 24px rgba(232, 150, 113, 0.25);
+    --shadow-inner: inset 0 1px 0 rgba(244, 240, 230, 0.06);
+
+    /* ── Motion: durations + easings ── */
+    --dur-instant: 80ms;
+    --dur-fast: 160ms;
+    --dur-base: 240ms;
+    --dur-medium: 360ms;
+    --dur-slow: 520ms;
+    --dur-page: 680ms;
+
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);          /* gentle out — default */
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.30, 1);     /* dramatic out */
+    --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);       /* balanced */
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);    /* overshoot spring */
+    --ease-snap: cubic-bezier(0.4, 0, 0, 1);             /* material standard */
+
+    /* ── Z-index scale (no more 9999) ── */
+    --z-base: 1;
+    --z-raised: 10;
+    --z-sticky: 100;
+    --z-overlay: 200;
+    --z-drawer: 300;
+    --z-modal: 400;
+    --z-toast: 500;
+    --z-tooltip: 600;
+    --z-max: 9999;
+
+    /* ── Layout ── */
+    --container-narrow: 720px;
+    --container-base: 1080px;
+    --container-wide: 1280px;
+    --container-max: 1440px;
 }
 
 /* Light theme — Claude's signature warm cream */
@@ -423,4 +498,259 @@ input, textarea { font-family: inherit; }
 }
 .material-symbols-outlined.filled {
     font-variation-settings: 'FILL' 1;
+}
+
+/* ────────────────────────────────────────────────────────────
+   PREMIUM UTILITY LAYER — additive, namespaced .eakp-*
+   Used by redesigned pages/components. Pre-existing class
+   names are left untouched.
+   ──────────────────────────────────────────────────────────── */
+
+/* Skip link for keyboard users */
+.eakp-skip-link {
+    position: absolute;
+    top: -100px;
+    left: var(--space-4);
+    z-index: var(--z-max);
+    padding: var(--space-2) var(--space-4);
+    background: var(--accent);
+    color: var(--text-on-primary);
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    transition: top var(--dur-base) var(--ease-out);
+}
+.eakp-skip-link:focus { top: var(--space-4); outline: 2px solid var(--accent-hover); outline-offset: 2px; }
+
+/* Reveal on scroll — paired with useScrollReveal */
+.eakp-reveal {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0);
+    transition:
+            opacity var(--dur-slow) var(--ease-out),
+            transform var(--dur-slow) var(--ease-out);
+    will-change: opacity, transform;
+}
+.eakp-reveal.is-visible {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+}
+.eakp-reveal--up { transform: translate3d(0, 32px, 0); }
+.eakp-reveal--left { transform: translate3d(-32px, 0, 0); }
+.eakp-reveal--right { transform: translate3d(32px, 0, 0); }
+.eakp-reveal--scale { transform: scale(0.96); }
+.eakp-reveal--scale.is-visible { transform: scale(1); }
+
+/* Stagger delays — chain with eakp-reveal */
+.eakp-stagger-1 { transition-delay: 60ms; }
+.eakp-stagger-2 { transition-delay: 120ms; }
+.eakp-stagger-3 { transition-delay: 180ms; }
+.eakp-stagger-4 { transition-delay: 240ms; }
+.eakp-stagger-5 { transition-delay: 300ms; }
+.eakp-stagger-6 { transition-delay: 360ms; }
+
+/* Glass surface */
+.eakp-glass {
+    background: rgba(38, 38, 36, 0.55);
+    backdrop-filter: saturate(140%) blur(18px);
+    -webkit-backdrop-filter: saturate(140%) blur(18px);
+    border: 1px solid rgba(244, 240, 230, 0.08);
+    box-shadow: var(--shadow-inner), var(--shadow-md);
+    border-radius: var(--radius-lg);
+}
+[data-theme="light"] .eakp-glass {
+    background: rgba(255, 255, 255, 0.62);
+    border-color: rgba(45, 42, 35, 0.08);
+}
+
+/* Grain overlay — apply to any container with isolation:isolate */
+.eakp-grain { position: relative; isolation: isolate; }
+.eakp-grain::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.06;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+    background-size: 200px 200px;
+    z-index: 0;
+}
+[data-theme="light"] .eakp-grain::after { opacity: 0.04; mix-blend-mode: multiply; }
+
+/* Magnetic target — paired with useMagnetic */
+.eakp-magnetic {
+    transition: transform var(--dur-medium) var(--ease-spring);
+    will-change: transform;
+}
+
+/* Spotlight border — coloured glow tracking cursor */
+.eakp-spotlight {
+    position: relative;
+    isolation: isolate;
+}
+.eakp-spotlight::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: radial-gradient(
+            180px circle at var(--mx, 50%) var(--my, 50%),
+            rgba(232, 150, 113, 0.55),
+            transparent 60%
+    );
+    -webkit-mask:
+            linear-gradient(#000 0 0) content-box,
+            linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--dur-base) var(--ease-out);
+}
+.eakp-spotlight:hover::before { opacity: 1; }
+
+/* Cluster — flex row with consistent gap, wrapping cleanly */
+.eakp-cluster {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    align-items: center;
+}
+
+/* Container helpers */
+.eakp-container { max-width: var(--container-base); margin-inline: auto; padding-inline: var(--space-6); }
+.eakp-container-wide { max-width: var(--container-wide); margin-inline: auto; padding-inline: var(--space-6); }
+
+/* Display heading helper */
+.eakp-display {
+    font-family: var(--font-display);
+    font-size: var(--text-display);
+    line-height: 1.02;
+    letter-spacing: -0.025em;
+    font-weight: 600;
+    text-wrap: balance;
+}
+.eakp-headline {
+    font-family: var(--font-display);
+    font-size: var(--text-3xl);
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    font-weight: 600;
+    text-wrap: balance;
+}
+.eakp-eyebrow {
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+/* Premium button (additive — does not replace existing .btn-*) */
+.eakp-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-6);
+    border-radius: var(--radius-pill);
+    border: 1px solid transparent;
+    font-weight: 600;
+    font-size: var(--text-sm);
+    transition:
+            transform var(--dur-fast) var(--ease-out),
+            background var(--dur-base) var(--ease-out),
+            box-shadow var(--dur-base) var(--ease-out),
+            border-color var(--dur-base) var(--ease-out);
+    will-change: transform;
+}
+.eakp-btn:active { transform: translateY(1px) scale(0.98); }
+.eakp-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+}
+.eakp-btn--primary {
+    background: var(--accent-gradient);
+    color: var(--text-on-primary);
+    box-shadow: var(--shadow-sm);
+}
+.eakp-btn--primary:hover {
+    box-shadow: var(--shadow-md), var(--shadow-glow);
+    transform: translateY(-1px);
+}
+.eakp-btn--ghost {
+    background: transparent;
+    color: var(--text-primary);
+    border-color: var(--border);
+}
+.eakp-btn--ghost:hover {
+    background: var(--bg-hover);
+    border-color: var(--outline-variant);
+}
+
+/* Drifting ambient glow — for hero/auth backgrounds */
+@keyframes eakp-drift-a {
+    0%, 100% { transform: translate3d(-12%, -8%, 0) scale(1); }
+    50%      { transform: translate3d(8%, 12%, 0) scale(1.12); }
+}
+@keyframes eakp-drift-b {
+    0%, 100% { transform: translate3d(10%, 8%, 0) scale(1.05); }
+    50%      { transform: translate3d(-10%, -10%, 0) scale(0.95); }
+}
+.eakp-drift-a { animation: eakp-drift-a 18s var(--ease-in-out) infinite; }
+.eakp-drift-b { animation: eakp-drift-b 22s var(--ease-in-out) infinite; }
+
+/* Shimmer for skeleton loaders */
+@keyframes eakp-shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+.eakp-skeleton {
+    background: linear-gradient(
+            90deg,
+            var(--bg-surface-container) 0%,
+            var(--bg-surface-container-high) 50%,
+            var(--bg-surface-container) 100%
+    );
+    background-size: 200% 100%;
+    animation: eakp-shimmer 1.6s linear infinite;
+    border-radius: var(--radius-md);
+}
+
+/* Focus visible — global polish (additive, applies to .eakp-* + native) */
+.eakp-focusable:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: var(--radius-md);
+}
+
+/* Smooth scroll for the document */
+html { scroll-behavior: smooth; }
+
+/* Tabular figures for numeric UI */
+.eakp-tabular { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; }
+
+/* Reduced motion — disable all premium animation primitives */
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .eakp-reveal,
+    .eakp-reveal--up,
+    .eakp-reveal--left,
+    .eakp-reveal--right,
+    .eakp-reveal--scale {
+        opacity: 1 !important;
+        transform: none !important;
+        transition: none !important;
+    }
+    .eakp-magnetic { transition: none !important; transform: none !important; }
+    .eakp-drift-a, .eakp-drift-b { animation: none !important; }
+    .eakp-skeleton { animation: none !important; }
+    .eakp-btn:hover { transform: none !important; }
+}
+
+/* Coarse pointer — disable magnetic / hover-only effects on touch */
+@media (hover: none) or (pointer: coarse) {
+    .eakp-magnetic { transition: none; transform: none !important; }
+    .eakp-spotlight::before { display: none; }
 }

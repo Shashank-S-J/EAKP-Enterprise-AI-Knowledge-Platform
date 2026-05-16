@@ -6,6 +6,7 @@ import AuthVisual from '../components/auth/AuthVisual';
 import LegalModal from '../components/shared/LegalModal';
 import Logo from '../components/shared/Logo';
 import ThemeToggle from '../components/auth/ThemeToggle';
+import { useGoogleIdentity } from '../hooks/useGoogleIdentity';
 
 function getPasswordStrength(pw) {
     if (!pw) return { level: 0, label: '' };
@@ -29,6 +30,8 @@ export default function RegisterPage() {
     const setUser = useAuthStore((s) => s.setUser);
     const [searchParams] = useSearchParams();
     const strength = getPasswordStrength(form.password);
+    // Lazily load Google Identity Services script (auth pages only).
+    const gsiReady = useGoogleIdentity();
 
     const update = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
@@ -97,7 +100,7 @@ export default function RegisterPage() {
         setLoading(true);
         try {
             const { google } = globalThis;
-            if (!google?.accounts?.id) { setError('Google Sign-In SDK not loaded.'); setLoading(false); return; }
+            if (!gsiReady || !google?.accounts?.id) { setError('Google Sign-In is still loading. Please try again in a moment.'); setLoading(false); return; }
             google.accounts.id.initialize({
                 client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || '',
                 callback: async (response) => {
@@ -122,6 +125,7 @@ export default function RegisterPage() {
 
     return (
         <div className="auth-page">
+            <div className="auth-grain" aria-hidden="true" />
             <div className="auth-ambient">
                 <div className="glow-1" />
                 <div className="glow-2" />

@@ -180,14 +180,14 @@ export default function AdminPage() {
         <div className="admin-page">
             {/* Header */}
             <div className="admin-header">
-                <button className="admin-back-btn" onClick={() => navigate('/chat')} title="Back to chat">
+                <button className="admin-back-btn" onClick={() => navigate('/chat')} title="Back to chat" aria-label="Back to chat">
                     <span className="material-symbols-outlined">arrow_back</span>
                 </button>
                 <h1>
                     <span className="material-symbols-outlined filled">shield</span>
                     Admin Dashboard
                 </h1>
-                <button className={`admin-refresh-btn ${refreshing ? 'spinning' : ''}`} onClick={handleRefresh} title="Refresh">
+                <button className={`admin-refresh-btn ${refreshing ? 'spinning' : ''}`} onClick={handleRefresh} title="Refresh" aria-label="Refresh data">
                     <span className="material-symbols-outlined">refresh</span>
                 </button>
                 <ThemeToggle />
@@ -269,8 +269,8 @@ export default function AdminPage() {
                             Usage Analytics
                         </h2>
                         <div style={{ display: 'flex', gap: 4 }}>
-                            <button className={`usage-toggle-btn ${usageMode === 'daily' ? 'active' : ''}`} onClick={() => setUsageMode('daily')}>Daily</button>
-                            <button className={`usage-toggle-btn ${usageMode === 'weekly' ? 'active' : ''}`} onClick={() => setUsageMode('weekly')}>Weekly</button>
+                            <button className={`usage-toggle-btn ${usageMode === 'daily' ? 'active' : ''}`} onClick={() => setUsageMode('daily')} aria-pressed={usageMode === 'daily'}>Daily</button>
+                            <button className={`usage-toggle-btn ${usageMode === 'weekly' ? 'active' : ''}`} onClick={() => setUsageMode('weekly')} aria-pressed={usageMode === 'weekly'}>Weekly</button>
                         </div>
                     </div>
                     {/* Summary boxes */}

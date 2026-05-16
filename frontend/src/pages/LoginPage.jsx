@@ -6,6 +6,7 @@ import AuthVisual from '../components/auth/AuthVisual';
 import LegalModal from '../components/shared/LegalModal';
 import Logo from '../components/shared/Logo';
 import ThemeToggle from '../components/auth/ThemeToggle';
+import { useGoogleIdentity } from '../hooks/useGoogleIdentity';
 
 // Whitelist of internal paths the login redirect is allowed to send users to.
 // Prevents open-redirect via crafted ?from= or location.state values.
@@ -35,6 +36,9 @@ export default function LoginPage() {
     const setUser = useAuthStore((s) => s.setUser);
     const [searchParams] = useSearchParams();
     const location = useLocation();
+    // Lazily load the Google Identity Services script only on this page
+    // (instead of loading ~50KB from accounts.google.com on every route).
+    const gsiReady = useGoogleIdentity();
 
     const finishAuth = async (data) => {
         storeTokens(data);
@@ -93,8 +97,8 @@ export default function LoginPage() {
         setLoading(true);
         try {
             const { google } = globalThis;
-            if (!google?.accounts?.id) {
-                setError('Google Sign-In SDK not loaded.');
+            if (!gsiReady || !google?.accounts?.id) {
+                setError('Google Sign-In is still loading. Please try again in a moment.');
                 setLoading(false);
                 return;
             }
@@ -133,6 +137,8 @@ export default function LoginPage() {
 
     return (
         <div className="auth-page">
+            {/* Subtle film-grain texture */}
+            <div className="auth-grain" aria-hidden="true" />
             {/* Ambient glows */}
             <div className="auth-ambient">
                 <div className="glow-1" />

@@ -1,9 +1,9 @@
-﻿/* ══════════════════════════════════════════════════════════════
-   EAKP — Enterprise AI Knowledge Platform
+﻿/* --------------------------------------------------------------
+   EAKP ï¿½ Enterprise AI Knowledge Platform
    Glass-morphism Material 3 Design System
-   ══════════════════════════════════════════════════════════════ */
+   -------------------------------------------------------------- */
 
-/* ── Global Animations ── */
+/* -- Global Animations -- */
 @keyframes spin {
     to {
         transform: rotate(360deg);
@@ -162,7 +162,7 @@
     }
 }
 
-/* ── 3D & Motion Animations ── */
+/* -- 3D & Motion Animations -- */
 @keyframes float3d {
     0% {
         transform: translateY(0) rotateX(0deg) rotateY(0deg);
@@ -285,7 +285,7 @@
     }
 }
 
-/* ── Utilities ── */
+/* -- Utilities -- */
 .glass-panel {
     background: rgba(29, 27, 32, 0.6);
     backdrop-filter: blur(12px);
@@ -318,7 +318,7 @@
     transform: scale(0.97);
 }
 
-/* ── Loading ── */
+/* -- Loading -- */
 .loading-screen {
     display: flex;
     align-items: center;
@@ -335,7 +335,7 @@
     animation: spin 0.8s linear infinite;
 }
 
-/* ── AI Orb Pulse ── */
+/* -- AI Orb Pulse -- */
 .ai-orb {
     background: radial-gradient(
             circle at 30% 30%,
@@ -347,7 +347,7 @@
     animation: pulse 4s infinite alternate;
 }
 
-/* ── Layout ── */
+/* -- Layout -- */
 .app-layout {
     display: flex;
     height: 100vh;
@@ -363,9 +363,9 @@
     overflow: hidden;
 }
 
-/* ══════════════════════════════════════
+/* --------------------------------------
    AUTH PAGES (Login & Register)
-   ══════════════════════════════════════ */
+   -------------------------------------- */
 .auth-page {
     min-height: 100vh;
     min-height: 100dvh;
@@ -449,7 +449,7 @@
     transform: translate(33%, 33%);
     animation: ambientDrift2 15s ease-in-out infinite alternate;
 }
-/* Third glow — mid-screen accent */
+/* Third glow ï¿½ mid-screen accent */
 .auth-ambient .glow-3 {
     position: absolute;
     top: 40%;
@@ -665,7 +665,7 @@
     color: var(--text-primary);
 }
 
-/* ── Register Left Panel (Showcase variant) ── */
+/* -- Register Left Panel (Showcase variant) -- */
 .auth-left--register {
     background: linear-gradient(
             135deg,
@@ -861,7 +861,7 @@
     animation: fadeIn 1s ease 0.8s both;
 }
 .auth-trust-label {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 500;
     color: #4cd7f6;
     text-transform: uppercase;
@@ -869,7 +869,7 @@
     font-family: "JetBrains Mono", monospace;
 }
 
-/* ── Enhanced Auth Card 3D Hover ── */
+/* -- Enhanced Auth Card 3D Hover -- */
 .auth-card {
     transition:
             transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
@@ -882,7 +882,7 @@
             0 0 30px rgba(204, 120, 92, 0.1);
 }
 
-/* ── Form group micro-interactions ── */
+/* -- Form group micro-interactions -- */
 .form-group .input-wrap {
     transition: transform 0.2s ease;
 }
@@ -890,7 +890,7 @@
     transform: translateY(-1px);
 }
 
-/* ── Button 3D press effect ── */
+/* -- Button 3D press effect -- */
 .btn-primary {
     transform-style: preserve-3d;
 }
@@ -898,7 +898,7 @@
     transform: scale(0.97) perspective(600px) rotateX(2deg);
 }
 
-/* ── OAuth button hover tilt ── */
+/* -- OAuth button hover tilt -- */
 .btn-oauth {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -907,7 +907,7 @@
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
-/* Orb area — legacy CSS kept for reference, canvas replaces this */
+/* Orb area ï¿½ legacy CSS kept for reference, canvas replaces this */
 .auth-orb-container {
     position: relative;
     width: 320px;
@@ -1272,7 +1272,7 @@
     margin-bottom: 4px;
 }
 .password-strength .strength-header span {
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--text-secondary);
 }
@@ -1509,7 +1509,7 @@
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
-/* ── Responsive auth ── */
+/* -- Responsive auth -- */
 @media (min-width: 1024px) {
     .auth-left {
         display: flex;
@@ -1559,9 +1559,9 @@
     }
 }
 
-/* ══════════════════════════════════════
+/* --------------------------------------
    COOKIE CONSENT BANNER
-   ══════════════════════════════════════ */
+   -------------------------------------- */
 .cookie-banner {
     position: fixed;
     bottom: 0;
@@ -1654,9 +1654,9 @@
     color: var(--text-primary);
 }
 
-/* ══════════════════════════════════════
+/* --------------------------------------
    SIDEBAR
-   ══════════════════════════════════════ */
+   -------------------------------------- */
 .sidebar {
     width: 288px;
     height: 100vh;
@@ -1863,7 +1863,7 @@
     padding: 8px 8px;
 }
 .conv-group-label {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--text-muted);
     text-transform: uppercase;
@@ -1931,7 +1931,7 @@
     text-overflow: ellipsis;
 }
 .conv-item .conv-date {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--text-muted);
 }
 .conv-item .delete-btn {
@@ -1992,7 +1992,7 @@
     margin-left: auto;
     background: var(--accent);
     color: var(--text-on-primary);
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 600;
     padding: 2px 6px;
     border-radius: 9999px;
@@ -2077,7 +2077,7 @@
     text-overflow: ellipsis;
 }
 .user-email {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--text-secondary);
     white-space: nowrap;
     overflow: hidden;
@@ -2113,7 +2113,7 @@
     display: none;
 }
 
-/* ── Rename Input ── */
+/* -- Rename Input -- */
 .rename-input {
     flex: 1;
     background: var(--bg-input);
@@ -2155,7 +2155,7 @@
 }
 .shortcut-hint {
     margin-left: auto;
-    font-size: 10px;
+    font-size: 12px;
     color: var(--text-muted);
     background: rgba(5, 5, 7, 0.5);
     padding: 2px 6px;
@@ -2164,9 +2164,9 @@
     font-weight: 600;
 }
 
-/* ══════════════════════════════════════
+/* --------------------------------------
    CHAT AREA
-   ══════════════════════════════════════ */
+   -------------------------------------- */
 /* Chat header */
 .chat-header {
     height: 64px;
@@ -2280,7 +2280,7 @@
     }
 }
 
-/* ── Empty State ── */
+/* -- Empty State -- */
 .empty-state {
     display: flex;
     flex-direction: column;
@@ -2382,9 +2382,9 @@
     color: var(--text-muted);
 }
 
-/* ══════════════════════════════════════
+/* --------------------------------------
    MESSAGES
-   ══════════════════════════════════════ */
+   -------------------------------------- */
 .message {
     padding: 16px 0;
     display: flex;
@@ -2509,7 +2509,7 @@
     gap: 4px;
     padding: 2px 8px;
     border-radius: 9999px;
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 500;
     margin-top: 8px;
 }
@@ -2592,7 +2592,7 @@
     background: rgba(207, 188, 255, 0.08);
     border: 1px solid rgba(207, 188, 255, 0.15);
     border-radius: 6px;
-    font-size: 11px;
+    font-size: 12px;
     color: var(--accent);
     cursor: pointer;
     transition: all 0.25s;
@@ -2611,7 +2611,7 @@
     background: var(--bg-surface-container-highest);
     border: 1px solid var(--outline-variant);
     border-radius: 4px;
-    font-size: 10px;
+    font-size: 12px;
     color: var(--accent);
     cursor: pointer;
     margin-left: 2px;
@@ -2625,7 +2625,7 @@
     gap: 4px;
     padding: 3px 8px;
     border-radius: 6px;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 500;
     margin-top: 8px;
 }
@@ -2673,7 +2673,7 @@
 }
 
 .msg-timestamp {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--text-muted);
     font-weight: 400;
     letter-spacing: 0.02em;
@@ -2688,7 +2688,7 @@
     border: 1px solid rgba(73, 69, 81, 0.2);
     border-radius: 6px;
     color: var(--text-secondary);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.25s ease;
@@ -2801,7 +2801,7 @@
     margin-left: 4px;
 }
 
-/* ── Input Area ── */
+/* -- Input Area -- */
 .input-area {
     position: sticky;
     bottom: 0;
@@ -2818,7 +2818,7 @@
     border: 1px solid rgba(73, 69, 81, 0.3);
     padding: 6px 12px;
     border-radius: 9999px;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--text-secondary);
     margin-bottom: 8px;
@@ -2940,7 +2940,7 @@
 .input-disclaimer {
     text-align: center;
     margin-top: 8px;
-    font-size: 10px;
+    font-size: 12px;
     color: var(--outline);
 }
 
@@ -3020,9 +3020,9 @@
     padding: 12px;
 }
 
-/* ══════════════════════════════════════
+/* --------------------------------------
    ADMIN DASHBOARD
-   ══════════════════════════════════════ */
+   -------------------------------------- */
 .admin-page {
     padding: 1.5rem;
     max-width: 1100px;
@@ -3203,7 +3203,7 @@
     letter-spacing: -0.02em;
 }
 .admin-stat-card .stat-label {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--text-secondary);
     text-transform: uppercase;
@@ -3242,7 +3242,7 @@
     color: var(--text-secondary);
 }
 
-/* Tables — scrollable wrapper */
+/* Tables ï¿½ scrollable wrapper */
 .admin-card .admin-table {
     width: 100%;
     border-collapse: collapse;
@@ -3254,7 +3254,7 @@
 .admin-table th {
     text-align: left;
     padding: 10px 12px;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--text-secondary);
     text-transform: uppercase;
@@ -3332,7 +3332,7 @@
     color: var(--text-primary);
 }
 .rag-stat-pill .label {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--text-muted);
     display: block;
 }
@@ -3372,7 +3372,7 @@
     position: absolute;
     top: 14px;
     right: 14px;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
     padding: 3px 8px;
     border-radius: 4px;
@@ -3408,9 +3408,9 @@
     transition: height 0.3s ease;
 }
 
-/* ══════════════════════════════════════
+/* --------------------------------------
    SETTINGS PAGE
-   ══════════════════════════════════════ */
+   -------------------------------------- */
 .settings-page {
     padding: 1.5rem 2rem;
     max-width: 1600px;
@@ -3486,7 +3486,7 @@
     font-size: 22px;
 }
 .metric-card-label {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--text-secondary);
     text-transform: uppercase;
@@ -3662,9 +3662,9 @@
     cursor: pointer;
 }
 
-/* ══════════════════════════════════════
+/* --------------------------------------
    ADMIN ANALYTICS (Charts)
-   ══════════════════════════════════════ */
+   -------------------------------------- */
 .admin-analytics-grid {
     display: grid;
     grid-template-columns: 1fr 2fr;
@@ -3679,9 +3679,9 @@
     }
 }
 
-/* ══════════════════════════════════════
+/* --------------------------------------
    SETTINGS PAGE ANIMATIONS
-   ══════════════════════════════════════ */
+   -------------------------------------- */
 
 /* Staggered fade-in for metric cards */
 .admin-stats-grid .metric-card:nth-child(1) {
@@ -4004,9 +4004,9 @@
     }
 }
 
-/* ══════════════════════════════════════
+/* --------------------------------------
    TOAST NOTIFICATIONS
-   ══════════════════════════════════════ */
+   -------------------------------------- */
 .toast-container {
     position: fixed;
     top: 16px;
@@ -4086,7 +4086,7 @@
     transition: width 0.1s linear;
 }
 
-/* ── Confirm Dialog ── */
+/* -- Confirm Dialog -- */
 .confirm-overlay {
     position: fixed;
     inset: 0;
@@ -4150,11 +4150,11 @@
     filter: brightness(1.1);
 }
 
-/* ══════════════════════════════════════
+/* --------------------------------------
    NEW 3-COLUMN CHAT LAYOUT
-   ══════════════════════════════════════ */
+   -------------------------------------- */
 
-/* ── Root layout ── */
+/* -- Root layout -- */
 .chat-page-root {
     height: 100vh;
     display: flex;
@@ -4162,7 +4162,7 @@
     overflow: hidden;
 }
 
-/* ── Top Navigation Bar ── */
+/* -- Top Navigation Bar -- */
 @keyframes navSlideDown {
     from {
         opacity: 0;
@@ -4394,7 +4394,7 @@
     transform: scale(1.05);
 }
 
-/* ── 3-Column Grid Layout ── */
+/* -- 3-Column Grid Layout -- */
 .chat-layout {
     flex: 1;
     display: grid;
@@ -4434,7 +4434,7 @@
     overflow: hidden;
 }
 
-/* ── Context Panel (right panel) ── */
+/* -- Context Panel (right panel) -- */
 @keyframes contextSlideIn {
     from {
         opacity: 0;
@@ -4483,7 +4483,7 @@
 }
 .context-doc-count {
     font-family: "JetBrains Mono", monospace;
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 600;
     letter-spacing: 0.05em;
     padding: 3px 10px;
@@ -4551,7 +4551,7 @@
 }
 .context-dropzone-formats {
     font-family: "JetBrains Mono", monospace;
-    font-size: 11px;
+    font-size: 12px;
     color: var(--outline);
 }
 
@@ -4563,7 +4563,7 @@
 }
 .context-section-label {
     font-family: "JetBrains Mono", monospace;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--outline);
     text-transform: uppercase;
@@ -4642,7 +4642,7 @@
     align-items: center;
     gap: 6px;
     margin-top: 4px;
-    font-size: 10px;
+    font-size: 12px;
     color: var(--outline);
 }
 .context-file-ready {
@@ -4693,7 +4693,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 10px;
+    font-size: 12px;
     color: var(--secondary);
 }
 .pipeline-spin {
@@ -4741,7 +4741,7 @@
     animation: pipelineShimmer 1.5s infinite;
 }
 
-/* ── Enhanced Message Styles ── */
+/* -- Enhanced Message Styles -- */
 @keyframes messageSlideUp {
     from {
         opacity: 0;
@@ -4827,7 +4827,7 @@
 }
 .confidence-text {
     font-family: "JetBrains Mono", monospace;
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.05em;
 }
@@ -4849,7 +4849,7 @@
 }
 .sources-label {
     font-family: "JetBrains Mono", monospace;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--outline);
     letter-spacing: 0.05em;
@@ -4868,7 +4868,7 @@
     background: var(--bg-surface-container);
     border: 1px solid rgba(74, 68, 85, 0.3);
     color: var(--text-secondary);
-    font-size: 11px;
+    font-size: 12px;
     font-family: "JetBrains Mono", monospace;
     cursor: pointer;
     transition: all 0.2s;
@@ -4881,14 +4881,14 @@
 /* Timestamp right-aligned under user bubble */
 .message-time-right {
     font-family: "JetBrains Mono", monospace;
-    font-size: 11px;
+    font-size: 12px;
     color: var(--outline);
     text-align: right;
     margin-top: 4px;
     padding-right: 4px;
 }
 
-/* ── Drag overlay for input ── */
+/* -- Drag overlay for input -- */
 .input-drag-overlay {
     position: absolute;
     inset: 0;
@@ -4923,7 +4923,7 @@
     font-weight: 600;
 }
 
-/* ── Additional Animations ── */
+/* -- Additional Animations -- */
 @keyframes gentleBob {
     0%,
     100% {
@@ -5049,7 +5049,7 @@
     animation-delay: 0.16s;
 }
 
-/* ── Light theme overrides for new components ── */
+/* -- Light theme overrides for new components -- */
 [data-theme="light"] .top-nav-bar {
     background: rgba(243, 238, 247, 0.85);
     border-bottom-color: rgba(0, 0, 0, 0.06);
@@ -5110,9 +5110,9 @@
     border-color: rgba(0, 0, 0, 0.08);
 }
 
-/* ══════════════════════════════════════
+/* --------------------------------------
    BOTTOM NAVIGATION (Mobile)
-   ══════════════════════════════════════ */
+   -------------------------------------- */
 .bottom-nav {
     display: none;
     position: fixed;
@@ -5140,7 +5140,7 @@
     border-radius: 16px;
     cursor: pointer;
     transition: all 0.25s ease;
-    font-size: 10px;
+    font-size: 12px;
 }
 .bottom-nav-item .material-symbols-outlined {
     font-size: 24px;
@@ -5154,12 +5154,12 @@
     font-variation-settings: "FILL" 1;
 }
 .bottom-nav-label {
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 600;
     letter-spacing: 0.02em;
 }
 
-/* ── Responsive ── */
+/* -- Responsive -- */
 @media (max-width: 1024px) {
     .chat-layout {
         grid-template-columns: 0px 1fr 0px !important;
@@ -5229,13 +5229,13 @@
         display: none;
     }
     .main-content {
-        padding-bottom: 80px;
+        padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
     }
 
     /* Admin page mobile */
     .admin-page {
         padding: 1rem;
-        padding-bottom: 100px;
+        padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
     }
     .admin-header {
         flex-wrap: wrap;
@@ -5255,7 +5255,7 @@
         font-size: 24px;
     }
     .admin-stat-card .stat-label {
-        font-size: 10px;
+        font-size: 12px;
     }
     .admin-analytics-grid {
         grid-template-columns: 1fr;
@@ -5282,7 +5282,7 @@
     /* Settings page mobile */
     .settings-page {
         padding: 1rem;
-        padding-bottom: 100px;
+        padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
     }
     .settings-tabs {
         overflow-x: auto;
@@ -5312,7 +5312,7 @@
         font-size: 22px;
     }
     .metric-card-label {
-        font-size: 10px;
+        font-size: 12px;
     }
     .admin-stats-grid .metric-card {
         min-width: 0;
@@ -5374,7 +5374,7 @@
         font-size: 13px;
     }
     .query-count {
-        font-size: 11px;
+        font-size: 12px;
         padding: 3px 6px;
     }
 
@@ -5448,9 +5448,9 @@
     }
 }
 
-/* ══════════════════════════════════════
-   ENHANCED ANIMATIONS — Admin & Settings
-   ══════════════════════════════════════ */
+/* --------------------------------------
+   ENHANCED ANIMATIONS ï¿½ Admin & Settings
+   -------------------------------------- */
 
 /* Staggered metric card entrance */
 .admin-stats-grid .metric-card:nth-child(1) {
@@ -5826,9 +5826,9 @@
     }
 }
 
-/* ══════════════════════════════════════
-   LIGHT THEME — Admin & Settings Pages
-   ══════════════════════════════════════ */
+/* --------------------------------------
+   LIGHT THEME ï¿½ Admin & Settings Pages
+   -------------------------------------- */
 [data-theme="light"] .admin-page {
     background: #f8f6fc;
 }
@@ -5931,9 +5931,9 @@
     background: linear-gradient(135deg, #cc785c, #3b82f6);
 }
 
-/* ══════════════════════════════════════
+/* --------------------------------------
    PAGE TRANSITION ANIMATION
-   ══════════════════════════════════════ */
+   -------------------------------------- */
 .page-transition {
     opacity: 0;
     transform: translateY(6px);
@@ -5946,9 +5946,9 @@
     transform: translateY(0);
 }
 
-/* ══════════════════════════════════════
+/* --------------------------------------
    NETWORK OFFLINE BANNER
-   ══════════════════════════════════════ */
+   -------------------------------------- */
 .network-banner {
     position: fixed;
     top: 0;
@@ -5979,9 +5979,9 @@
     }
 }
 
-/* ══════════════════════════════════════
-   ENHANCED MICRO-INTERACTIONS — Global
-   ══════════════════════════════════════ */
+/* --------------------------------------
+   ENHANCED MICRO-INTERACTIONS ï¿½ Global
+   -------------------------------------- */
 
 /* All interactive buttons get subtle scale on press */
 button:not(:disabled):active {
@@ -6117,7 +6117,7 @@ textarea:focus-visible {
 
 /* Streaming cursor blink */
 .streaming-cursor::after {
-    content: "▊";
+    content: "?";
     animation: blink 1s step-end infinite;
     color: var(--accent);
     margin-left: 2px;
@@ -6207,9 +6207,9 @@ textarea:focus-visible {
     transition: 0s;
 }
 
-/* ══════════════════════════════════════
+/* --------------------------------------
    PREFERS REDUCED MOTION
-   ══════════════════════════════════════ */
+   -------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -6235,9 +6235,9 @@ textarea:focus-visible {
     }
 }
 
-/* ══════════════════════════════════════
+/* --------------------------------------
    ADDITIONAL MOBILE ENHANCEMENTS
-   ══════════════════════════════════════ */
+   -------------------------------------- */
 @media (max-width: 768px) {
     /* Full-height for mobile browsers with dynamic viewport */
     .auth-page {
@@ -6368,9 +6368,9 @@ textarea:focus-visible {
     }
 }
 
-/* ══════════════════════════════════════
+/* --------------------------------------
    ACCESSIBILITY: Reduced Motion
-   ══════════════════════════════════════ */
+   -------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -6388,9 +6388,9 @@ textarea:focus-visible {
     }
 }
 
-/* ══════════════════════════════════════
+/* --------------------------------------
    LOADING SKELETONS
-   ══════════════════════════════════════ */
+   -------------------------------------- */
 @keyframes skeletonShimmer {
     0% {
         background-position: -200% 0;
@@ -6447,9 +6447,9 @@ textarea:focus-visible {
     gap: 6px;
 }
 
-/* ══════════════════════════════════════
+/* --------------------------------------
    FILE UPLOAD PROGRESS
-   ══════════════════════════════════════ */
+   -------------------------------------- */
 .upload-progress-overlay {
     position: absolute;
     inset: 0;
@@ -6500,9 +6500,9 @@ textarea:focus-visible {
     white-space: nowrap;
 }
 
-/* ══════════════════════════════════════
+/* --------------------------------------
    ACCESSIBILITY: Focus Visible
-   ══════════════════════════════════════ */
+   -------------------------------------- */
 :focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
@@ -6531,9 +6531,9 @@ textarea:focus-visible {
     top: 16px;
 }
 
-/* ══════════════════════════════════════
+/* --------------------------------------
    NETWORK STATUS BANNER (enhanced)
-   ══════════════════════════════════════ */
+   -------------------------------------- */
 .network-banner-offline {
     position: fixed;
     top: 0;
@@ -6564,9 +6564,9 @@ textarea:focus-visible {
     background: linear-gradient(135deg, #d97706, #b45309);
 }
 
-/* ══════════════════════════════════════
+/* --------------------------------------
    404 NOT FOUND PAGE
-   ══════════════════════════════════════ */
+   -------------------------------------- */
 .not-found-page {
     min-height: 100vh;
     display: flex;
@@ -6620,9 +6620,9 @@ textarea:focus-visible {
     border-color: var(--accent);
 }
 
-/* ══════════════════════════════════════
+/* --------------------------------------
    KEYBOARD SHORTCUTS MODAL
-   ══════════════════════════════════════ */
+   -------------------------------------- */
 .modal-overlay {
     position: fixed;
     inset: 0;
@@ -6713,9 +6713,9 @@ textarea:focus-visible {
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
-/* ══════════════════════════════════════
+/* --------------------------------------
    DOCS SEARCH & FEEDBACK BUTTONS
-   ══════════════════════════════════════ */
+   -------------------------------------- */
 .docs-search-wrap {
     display: flex;
     align-items: center;
@@ -6757,10 +6757,10 @@ textarea:focus-visible {
     background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
-/* ══════════════════════════════════════
-   CHAT — Claude-style refinements
+/* --------------------------------------
+   CHAT ï¿½ Claude-style refinements
    (Smart scroll, edit-message card, polished motion)
-   ══════════════════════════════════════ */
+   -------------------------------------- */
 
 /* Smoother momentum scroll on the messages list */
 .messages-area {
@@ -6769,7 +6769,7 @@ textarea:focus-visible {
     scrollbar-gutter: stable;
 }
 
-/* Floating "scroll to latest" pill — appears only when user has scrolled up */
+/* Floating "scroll to latest" pill ï¿½ appears only when user has scrolled up */
 .scroll-to-bottom-btn {
     position: absolute;
     left: 50%;
@@ -6819,7 +6819,7 @@ textarea:focus-visible {
     }
 }
 
-/* ── Edit-message card (Claude-style inline editor) ── */
+/* -- Edit-message card (Claude-style inline editor) -- */
 .message.message-editing {
     align-items: flex-end;
 }
@@ -6871,7 +6871,7 @@ textarea:focus-visible {
     border-top: 1px solid var(--border-subtle);
 }
 .edit-message-card .edit-hint {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--text-muted);
     letter-spacing: 0.01em;
 }
@@ -6925,14 +6925,14 @@ textarea:focus-visible {
     box-shadow: none;
 }
 
-/* Hover affordance for "Edit" on user message — already styled, just ensure pointer feedback */
+/* Hover affordance for "Edit" on user message ï¿½ already styled, just ensure pointer feedback */
 .message.user .action-btn {
     cursor: pointer;
 }
 
-/* ══════════════════════════════════════
-   ADMIN — empty state
-   ══════════════════════════════════════ */
+/* --------------------------------------
+   ADMIN ï¿½ empty state
+   -------------------------------------- */
 .admin-empty-state {
     display: flex;
     flex-direction: column;
@@ -6956,11 +6956,11 @@ textarea:focus-visible {
     max-width: 360px;
 }
 
-/* ══════════════════════════════════════
-   GLOBAL POLISH — subtle 3D motion (Claude-like)
+/* --------------------------------------
+   GLOBAL POLISH ï¿½ subtle 3D motion (Claude-like)
    Promotes interactive elements to GPU layers and adds
    a barely-there lift on hover. Respects reduced-motion.
-   ══════════════════════════════════════ */
+   -------------------------------------- */
 .action-btn,
 .send-btn,
 .input-btn,
@@ -6993,9 +6993,9 @@ textarea:focus-visible {
     }
 }
 
-/* ══════════════════════════════════════
+/* --------------------------------------
    OAuth Consent Row (Login & Register)
-   ══════════════════════════════════════ */
+   -------------------------------------- */
 .oauth-consent {
     display: flex;
     align-items: flex-start;
@@ -7055,11 +7055,11 @@ textarea:focus-visible {
     }
 }
 
-/* ══════════════════════════════════════
-   GLOBAL MOBILE FIXES (≤768px)
-   ══════════════════════════════════════ */
+/* --------------------------------------
+   GLOBAL MOBILE FIXES (=768px)
+   -------------------------------------- */
 @media (max-width: 768px) {
-    /* Auth page — give breathing room above card so mobile-brand never overlaps */
+    /* Auth page ï¿½ give breathing room above card so mobile-brand never overlaps */
     .auth-right {
         padding: 4.5rem 1rem 2rem;
         align-items: flex-start;
@@ -7131,7 +7131,7 @@ textarea:focus-visible {
         width: 100%;
         flex-wrap: wrap;
     }
-    /* Settings tabs — horizontal scroll instead of squish */
+    /* Settings tabs ï¿½ horizontal scroll instead of squish */
     .settings-tabs {
         overflow-x: auto;
         flex-wrap: nowrap;
@@ -7175,7 +7175,7 @@ textarea:focus-visible {
     }
 }
 
-/* Extra-small screens (≤380px) */
+/* Extra-small screens (=380px) */
 @media (max-width: 380px) {
     .auth-card {
         padding: 1rem;
@@ -7203,14 +7203,14 @@ textarea:focus-visible {
         padding-top: max(0px, env(safe-area-inset-top));
     }
 }
-/* ════════════════════════════════════════════════════════════════
-   ╭──────────────────────────────────────────────────────────────╮
-   │  CLAUDE REFRESH — Composer attachments, motion, auth polish  │
-   │  Layered at end so it overrides earlier rules where needed.  │
-   ╰──────────────────────────────────────────────────────────────╯
-   ════════════════════════════════════════════════════════════════ */
+/* ----------------------------------------------------------------
+   ?--------------------------------------------------------------?
+   ï¿½  CLAUDE REFRESH ï¿½ Composer attachments, motion, auth polish  ï¿½
+   ï¿½  Layered at end so it overrides earlier rules where needed.  ï¿½
+   ?--------------------------------------------------------------?
+   ---------------------------------------------------------------- */
 
-/* ── Composer file attachment cards (Claude-style) ── */
+/* -- Composer file attachment cards (Claude-style) -- */
 .composer-attachments {
     display: flex;
     flex-wrap: wrap;
@@ -7281,7 +7281,7 @@ textarea:focus-visible {
     background: #e7c365;
 }
 
-/* ── Upload progress (Claude-style) ───────────────────────────────────── */
+/* -- Upload progress (Claude-style) ------------------------------------- */
 .composer-attachment-card.is-uploading {
     border-color: var(--accent);
     box-shadow: 0 0 0 1px var(--accent-soft, rgba(204, 120, 92, 0.18));
@@ -7360,7 +7360,7 @@ textarea:focus-visible {
     display: flex;
     align-items: center;
     gap: 5px;
-    font-size: 11px;
+    font-size: 12px;
     color: var(--text-muted);
     font-family: var(--font-mono);
 }
@@ -7398,7 +7398,7 @@ textarea:focus-visible {
     font-size: 16px;
 }
 
-/* ── Attachment chips inside a user message bubble (ChatGPT-style) ── */
+/* -- Attachment chips inside a user message bubble (ChatGPT-style) -- */
 .message-attachments {
     display: flex;
     flex-wrap: wrap;
@@ -7426,7 +7426,7 @@ textarea:focus-visible {
     white-space: nowrap;
 }
 
-/* ── Composer textarea polish ── */
+/* -- Composer textarea polish -- */
 .input-wrapper {
     border-radius: 18px;
     padding: 10px 10px 10px 12px;
@@ -7451,7 +7451,7 @@ textarea:focus-visible {
     background: var(--accent);
     color: var(--text-on-primary);
     box-shadow: 0 4px 14px rgba(204, 120, 92, 0.28);
-    animation: none; /* override gradient flow — Claude is solid color */
+    animation: none; /* override gradient flow ï¿½ Claude is solid color */
 }
 .send-btn:hover {
     background: var(--accent-hover);
@@ -7472,7 +7472,7 @@ textarea:focus-visible {
     background: rgba(204, 120, 92, 0.06);
 }
 
-/* ── Suggestion cards on empty state ── */
+/* -- Suggestion cards on empty state -- */
 .suggestion-card {
     border-radius: 14px;
     background: var(--bg-surface-container);
@@ -7488,7 +7488,7 @@ textarea:focus-visible {
     box-shadow: 0 12px 32px -10px rgba(204, 120, 92, 0.25);
 }
 
-/* ── Auth pages: cleaner, editorial Claude-style ── */
+/* -- Auth pages: cleaner, editorial Claude-style -- */
 .auth-page {
     background: var(--bg-primary);
 }
@@ -7552,7 +7552,7 @@ textarea:focus-visible {
     margin-top: 4px;
 }
 
-/* Brand icon — softer, terra-cotta */
+/* Brand icon ï¿½ softer, terra-cotta */
 .auth-brand-icon {
     background: linear-gradient(135deg, #cc785c, #a0512f);
     box-shadow: 0 6px 18px rgba(204, 120, 92, 0.35);
@@ -7566,7 +7566,7 @@ textarea:focus-visible {
     letter-spacing: -0.02em;
 }
 
-/* OAuth buttons — flatter, Claude-like */
+/* OAuth buttons ï¿½ flatter, Claude-like */
 .btn-oauth {
     background: var(--bg-surface-container);
     border: 1px solid var(--border);
@@ -7583,7 +7583,7 @@ textarea:focus-visible {
     transform: translateY(-1px);
 }
 
-/* Primary CTA — solid Claude terracotta */
+/* Primary CTA ï¿½ solid Claude terracotta */
 .btn-primary {
     background: var(--accent);
     color: var(--text-on-primary);
@@ -7611,7 +7611,7 @@ textarea:focus-visible {
     box-shadow: none;
 }
 
-/* Form inputs — softer corners, warm focus */
+/* Form inputs ï¿½ softer corners, warm focus */
 .form-group input {
     border-radius: 12px;
     background: var(--bg-input);
@@ -7625,7 +7625,7 @@ textarea:focus-visible {
     box-shadow: 0 0 0 3px rgba(204, 120, 92, 0.15);
 }
 
-/* ── Sidebar polish ── */
+/* -- Sidebar polish -- */
 .sidebar {
     background: var(--bg-sidebar);
 }
@@ -7645,7 +7645,7 @@ textarea:focus-visible {
     border: 1px solid rgba(204, 120, 92, 0.25);
 }
 
-/* ── Top nav refresh ── */
+/* -- Top nav refresh -- */
 .top-nav-bar {
     background: var(--bg-surface);
     border-bottom: 1px solid var(--border);
@@ -7657,7 +7657,7 @@ textarea:focus-visible {
     letter-spacing: -0.01em;
 }
 
-/* ── Message bubbles — softer borders, calmer hover ── */
+/* -- Message bubbles ï¿½ softer borders, calmer hover -- */
 .message-bubble {
     border-radius: 14px;
     transition:
@@ -7665,7 +7665,7 @@ textarea:focus-visible {
             box-shadow 0.2s ease;
 }
 
-/* ── Global motion utilities (PC + mobile) ── */
+/* -- Global motion utilities (PC + mobile) -- */
 :where(
   button,
   a,
@@ -7698,7 +7698,7 @@ textarea:focus-visible {
     color: var(--text-primary);
 }
 
-/* ── Mobile motion — calmer, no large transforms that cause jank ── */
+/* -- Mobile motion ï¿½ calmer, no large transforms that cause jank -- */
 @media (max-width: 768px) {
     .composer-attachment-card {
         max-width: 100%;
@@ -7728,7 +7728,7 @@ textarea:focus-visible {
     }
 }
 
-/* ── Reduced motion already handled at top, double-down for new keyframes ── */
+/* -- Reduced motion already handled at top, double-down for new keyframes -- */
 @media (prefers-reduced-motion: reduce) {
     .composer-attachment-card,
     .composer-attachments {
@@ -7761,7 +7761,7 @@ textarea:focus-visible {
 }
 .eakp-logo-sub {
     font-family: "JetBrains Mono", monospace;
-    font-size: 10px;
+    font-size: 12px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--text-muted, #8b8778);
@@ -7882,7 +7882,7 @@ textarea:focus-visible {
 }
 .help-eyebrow {
     font-family: "JetBrains Mono", monospace;
-    font-size: 11px;
+    font-size: 12px;
     letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--accent);
@@ -8013,7 +8013,7 @@ textarea:focus-visible {
 }
 .help-section-count {
     font-family: "JetBrains Mono", monospace;
-    font-size: 11px;
+    font-size: 12px;
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--text-muted, #8b8778);
@@ -8113,7 +8113,7 @@ textarea:focus-visible {
 }
 .help-shortcut-keys kbd {
     font-family: "JetBrains Mono", monospace;
-    font-size: 11px;
+    font-size: 12px;
     padding: 4px 8px;
     background: var(--bg-primary);
     border: 1px solid var(--border);
@@ -8140,7 +8140,7 @@ textarea:focus-visible {
     align-items: center;
     gap: 10px;
     font-family: "JetBrains Mono", monospace;
-    font-size: 11px;
+    font-size: 12px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--text-secondary);
@@ -8199,7 +8199,7 @@ textarea:focus-visible {
 }
 
 /* ============================================================
-   ░░  RESPONSIVE POLISH  ░░
+   ï¿½ï¿½  RESPONSIVE POLISH  ï¿½ï¿½
    Final layer that unifies mobile + laptop behavior across
    every page. Kept at end of file so it always wins over
    feature-area rules above. Touches:
@@ -8215,7 +8215,7 @@ textarea:focus-visible {
      content doesn't squeeze against the sidebar.
    ============================================================ */
 
-/* ── Global viewport guards ── */
+/* -- Global viewport guards -- */
 html,
 body,
 #root {
@@ -8238,7 +8238,7 @@ svg {
     min-height: 100dvh;
 }
 
-/* ── Laptop range (1024 – 1366px) ── */
+/* -- Laptop range (1024 ï¿½ 1366px) -- */
 @media (min-width: 1025px) and (max-width: 1366px) {
     .admin-page,
     .settings-page,
@@ -8262,7 +8262,7 @@ svg {
     }
 }
 
-/* ── Tablet & phone shared (≤ 1024px) ── */
+/* -- Tablet & phone shared (= 1024px) -- */
 @media (max-width: 1024px) {
     .admin-page {
         min-height: 100dvh;
@@ -8279,7 +8279,7 @@ svg {
     }
 }
 
-/* ── Phone (≤ 768px) ── */
+/* -- Phone (= 768px) -- */
 @media (max-width: 768px) {
     /* Settings tab strip stays one row but scrolls horizontally */
     .settings-tabs {
@@ -8325,7 +8325,7 @@ svg {
         min-height: 40px;
     }
 
-    /* All form inputs ≥ 16px so iOS doesn't zoom on focus */
+    /* All form inputs = 16px so iOS doesn't zoom on focus */
     input[type="text"],
     input[type="email"],
     input[type="password"],
@@ -8352,7 +8352,7 @@ svg {
     }
 }
 
-/* ── Small phone (≤ 480px) ── */
+/* -- Small phone (= 480px) -- */
 @media (max-width: 480px) {
     .admin-page,
     .settings-page,
@@ -8390,7 +8390,7 @@ svg {
     }
 }
 
-/* ── Tiny phone (≤ 360px) ── */
+/* -- Tiny phone (= 360px) -- */
 @media (max-width: 360px) {
     .chat-header {
         padding-left: 8px;
@@ -8406,7 +8406,7 @@ svg {
     }
 }
 
-/* ── Landscape phone: sidebar drawer takes full width, hide bottom nav ── */
+/* -- Landscape phone: sidebar drawer takes full width, hide bottom nav -- */
 @media (max-height: 480px) and (orientation: landscape) {
     .app-sidebar {
         width: min(280px, 70vw);
@@ -8414,15 +8414,15 @@ svg {
 }
 
 /* ============================================================
-   ░░  MOBILE MOTION & POLISH  ░░
+   ï¿½ï¿½  MOBILE MOTION & POLISH  ï¿½ï¿½
    Smooth, native-feeling transitions for phones.
    - Hardware-accelerated transforms only (no layout thrash)
    - System easing curves (iOS spring + Material standard)
    - Respects prefers-reduced-motion (no overrides)
-   - Phone-only (≤768px) so desktop micro-interactions remain
+   - Phone-only (=768px) so desktop micro-interactions remain
    ============================================================ */
 
-/* Standard easing tokens — match these to feel consistent. */
+/* Standard easing tokens ï¿½ match these to feel consistent. */
 :root {
     --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);     /* page/sheet enter */
     --ease-out-snap: cubic-bezier(0.34, 1.2, 0.64, 1);   /* button press release */
@@ -8431,7 +8431,7 @@ svg {
 
 @media (max-width: 768px) {
 
-    /* ── Page enter: subtle fade + lift on every top-level container ── */
+    /* -- Page enter: subtle fade + lift on every top-level container -- */
     .auth-page,
     .admin-page,
     .settings-page,
@@ -8447,7 +8447,7 @@ svg {
         to   { opacity: 1; transform: translate3d(0, 0, 0); }
     }
 
-    /* ── Auth pages: staggered field entrance ── */
+    /* -- Auth pages: staggered field entrance -- */
     .auth-card {
         animation: cardEnter 0.5s var(--ease-out-soft) both;
     }
@@ -8474,7 +8474,7 @@ svg {
         to   { opacity: 1; transform: translate3d(0, 0, 0); }
     }
 
-    /* ── Inputs: smoother focus glow without jitter ── */
+    /* -- Inputs: smoother focus glow without jitter -- */
     .auth-card input,
     .input-wrapper,
     .help-search,
@@ -8485,7 +8485,7 @@ svg {
                 background-color 0.2s var(--ease-in-out);
     }
 
-    /* ── Buttons: tactile press feedback, no hover lift (phones don't hover) ── */
+    /* -- Buttons: tactile press feedback, no hover lift (phones don't hover) -- */
     .btn-primary,
     .btn-oauth,
     .btn-secondary,
@@ -8531,7 +8531,7 @@ svg {
         box-shadow: inherit;
     }
 
-    /* ── Sidebar drawer: iOS-style spring slide ── */
+    /* -- Sidebar drawer: iOS-style spring slide -- */
     .app-sidebar,
     .sidebar {
         transition: transform 0.32s var(--ease-out-soft);
@@ -8540,7 +8540,7 @@ svg {
         transition: opacity 0.28s var(--ease-in-out);
     }
 
-    /* ── Documents panel: slide up + fade ── */
+    /* -- Documents panel: slide up + fade -- */
     .context-panel,
     .docs-panel-overlay {
         transition:
@@ -8548,7 +8548,7 @@ svg {
                 opacity 0.24s var(--ease-in-out);
     }
 
-    /* ── Bottom nav: respect safe area, smooth icon scale on active ── */
+    /* -- Bottom nav: respect safe area, smooth icon scale on active -- */
     .bottom-nav-item {
         transition:
                 color 0.2s var(--ease-in-out),
@@ -8566,7 +8566,7 @@ svg {
         100% { transform: scale(1); }
     }
 
-    /* ── Chat messages: gentle slide-in, only animate the last ── */
+    /* -- Chat messages: gentle slide-in, only animate the last -- */
     .message-bubble-wrap {
         animation: msgIn 0.32s var(--ease-out-soft) both;
     }
@@ -8575,7 +8575,7 @@ svg {
         to   { opacity: 1; transform: translate3d(0, 0, 0); }
     }
 
-    /* ── Composer: smooth grow when typing multi-line ── */
+    /* -- Composer: smooth grow when typing multi-line -- */
     .input-wrapper textarea {
         transition: height 0.18s var(--ease-in-out);
     }
@@ -8589,7 +8589,7 @@ svg {
         transform: translate3d(0, -1px, 0);
     }
 
-    /* ── Composer attachment chip pop-in (lighter than desktop) ── */
+    /* -- Composer attachment chip pop-in (lighter than desktop) -- */
     .composer-attachment-card {
         animation: chipPop 0.28s var(--ease-out-snap) both;
     }
@@ -8598,7 +8598,7 @@ svg {
         to   { opacity: 1; transform: scale(1) translate3d(0, 0, 0); }
     }
 
-    /* ── Suggestion cards: staggered entrance on empty chat ── */
+    /* -- Suggestion cards: staggered entrance on empty chat -- */
     .suggestion-cards > * {
         animation: fieldRise 0.42s var(--ease-out-soft) both;
     }
@@ -8607,7 +8607,7 @@ svg {
     .suggestion-cards > *:nth-child(3) { animation-delay: 0.15s; }
     .suggestion-cards > *:nth-child(4) { animation-delay: 0.20s; }
 
-    /* ── Tabs / chips: smooth underline & color change ── */
+    /* -- Tabs / chips: smooth underline & color change -- */
     .settings-tab,
     .help-tile,
     .source-chip {
@@ -8621,7 +8621,7 @@ svg {
         transition: transform 0.28s var(--ease-out-soft);
     }
 
-    /* ── Modal: scale-in instead of pop ── */
+    /* -- Modal: scale-in instead of pop -- */
     .modal-overlay {
         animation: fadeIn 0.2s var(--ease-in-out);
     }
@@ -8634,7 +8634,7 @@ svg {
         to   { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
     }
 
-    /* ── Toast: smoother spring from the bottom ── */
+    /* -- Toast: smoother spring from the bottom -- */
     .toast {
         animation: toastInPhone 0.4s var(--ease-out-soft);
     }
@@ -8643,7 +8643,7 @@ svg {
         to   { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
     }
 
-    /* ── Scrollers feel smoother with momentum + hidden tracks ── */
+    /* -- Scrollers feel smoother with momentum + hidden tracks -- */
     .admin-page,
     .settings-page,
     .help-page,
@@ -8657,7 +8657,7 @@ svg {
         overscroll-behavior: contain;
     }
 
-    /* ── Stop heavy backdrop-blur effects on phone (battery + jank) ── */
+    /* -- Stop heavy backdrop-blur effects on phone (battery + jank) -- */
     .input-wrapper,
     .bottom-nav,
     .top-nav-bar,
@@ -8669,7 +8669,7 @@ svg {
     }
 }
 
-/* ── Honor accessibility preferences ── */
+/* -- Honor accessibility preferences -- */
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -8678,5 +8678,1552 @@ svg {
         animation-iteration-count: 1 !important;
         transition-duration: 0.001ms !important;
         scroll-behavior: auto !important;
+    }
+}
+
+/* ============================================================================
+   PREMIUM EMPTY STATE  —  cinematic chat welcome (.eakp-empty)
+   Component: src/components/chat/EmptyState.jsx
+   Animation principles (from ui-animation skill):
+     - transform & opacity only
+     - asymmetric importance-weighted stagger (greeting -> headline words -> body -> cards)
+     - enter curve cubic-bezier(0.22, 1, 0.36, 1) shared across paired elements
+     - scale starts at 0.96, never 0
+     - prefers-reduced-motion: opacity-only crossfade, no spatial movement
+   ========================================================================= */
+.eakp-empty {
+    position: relative;
+    width: 100%;
+    min-height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 64px 24px 48px;
+    overflow: hidden;
+    isolation: isolate;
+}
+.eakp-empty__glow {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    filter: blur(120px);
+    will-change: transform, opacity;
+    z-index: 0;
+}
+.eakp-empty__glow--a {
+    width: clamp(320px, 48vw, 560px);
+    height: clamp(320px, 48vw, 560px);
+    top: -8%;
+    left: 18%;
+    background: radial-gradient(circle, rgba(232, 150, 113, 0.18), transparent 70%);
+    animation: eakpDriftA 14s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+}
+.eakp-empty__glow--b {
+    width: clamp(260px, 36vw, 420px);
+    height: clamp(260px, 36vw, 420px);
+    bottom: -4%;
+    right: 12%;
+    background: radial-gradient(circle, rgba(207, 188, 255, 0.14), transparent 70%);
+    animation: eakpDriftB 18s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+}
+[data-theme="light"] .eakp-empty__glow--a {
+    background: radial-gradient(circle, rgba(204, 120, 92, 0.20), transparent 70%);
+}
+[data-theme="light"] .eakp-empty__glow--b {
+    background: radial-gradient(circle, rgba(160, 130, 200, 0.18), transparent 70%);
+}
+@keyframes eakpDriftA {
+    from { transform: translate3d(0, 0, 0) scale(0.95);  opacity: 0.55; }
+    to   { transform: translate3d(40px, 28px, 0) scale(1.08); opacity: 0.9; }
+}
+@keyframes eakpDriftB {
+    from { transform: translate3d(0, 0, 0) scale(1);    opacity: 0.45; }
+    to   { transform: translate3d(-44px, -18px, 0) scale(0.94); opacity: 0.75; }
+}
+.eakp-empty__noise {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.035;
+    mix-blend-mode: overlay;
+    pointer-events: none;
+    z-index: 1;
+}
+.eakp-empty__content {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 760px;
+    text-align: center;
+}
+
+/* Greeting eyebrow */
+.eakp-empty__greet {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+    animation: eakpRise 620ms cubic-bezier(0.22, 1, 0.36, 1) 80ms forwards;
+}
+.eakp-empty__greet-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 14px var(--accent);
+    animation: eakpDotPulse 2.6s ease-in-out infinite;
+}
+@keyframes eakpDotPulse {
+    0%, 100% { opacity: 0.55; transform: scale(1); }
+    50%      { opacity: 1;    transform: scale(1.35); }
+}
+
+/* Headline — word-level entrance */
+.eakp-empty__head {
+    font-size: clamp(30px, 5.4vw, 56px);
+    font-weight: 600;
+    line-height: 1.05;
+    letter-spacing: -0.025em;
+    color: var(--text-primary);
+    margin: 0 0 18px;
+    background: linear-gradient(180deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.eakp-empty__word {
+    display: inline-block;
+    opacity: 0;
+    transform: translate3d(0, 22px, 0);
+    filter: blur(4px);
+    animation: eakpWordIn 720ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    will-change: transform, opacity, filter;
+}
+@keyframes eakpWordIn {
+    to { opacity: 1; transform: translate3d(0, 0, 0); filter: blur(0); }
+}
+
+/* Subhead */
+.eakp-empty__sub {
+    font-size: 15px;
+    color: var(--text-secondary);
+    margin: 0 auto 38px;
+    max-width: 480px;
+    line-height: 1.55;
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+    animation: eakpRise 720ms cubic-bezier(0.22, 1, 0.36, 1) 540ms forwards;
+}
+@keyframes eakpRise {
+    to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+/* Asymmetric editorial grid: featured card spans 2 rows on the left */
+.eakp-empty__grid {
+    display: grid;
+    grid-template-columns: 1.35fr 1fr;
+    grid-auto-rows: minmax(96px, auto);
+    gap: 12px;
+    text-align: left;
+}
+.eakp-empty__card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 18px 18px 16px;
+    background: var(--bg-surface-container);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--border-subtle);
+    border-radius: 14px;
+    cursor: pointer;
+    color: var(--text-primary);
+    font: inherit;
+    text-align: left;
+    overflow: hidden;
+    opacity: 0;
+    transform: translate3d(0, 18px, 0) scale(0.96);
+    animation: eakpCardIn 760ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    transition:
+            background-color 220ms cubic-bezier(0.22, 1, 0.36, 1),
+            border-color    220ms cubic-bezier(0.22, 1, 0.36, 1),
+            box-shadow      240ms cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform, opacity;
+}
+@keyframes eakpCardIn {
+    to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+.eakp-empty__card--featured {
+    grid-row: span 2;
+    padding: 24px 22px 22px;
+    background: linear-gradient(
+            160deg,
+            var(--bg-surface-container-high) 0%,
+            var(--bg-surface-container) 70%
+    );
+}
+.eakp-empty__card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+            circle at 30% 0%,
+            rgba(232, 150, 113, 0.10),
+            transparent 60%
+    );
+    opacity: 0;
+    transition: opacity 240ms cubic-bezier(0.22, 1, 0.36, 1);
+    pointer-events: none;
+}
+[data-theme="light"] .eakp-empty__card::before {
+    background: radial-gradient(circle at 30% 0%, rgba(204, 120, 92, 0.10), transparent 60%);
+}
+.eakp-empty__card:hover {
+    background: var(--bg-surface-container-high);
+    border-color: rgba(232, 150, 113, 0.32);
+    box-shadow:
+            0 18px 50px rgba(0, 0, 0, 0.28),
+            0 0 0 1px rgba(232, 150, 113, 0.16);
+}
+[data-theme="light"] .eakp-empty__card:hover {
+    background: var(--bg-surface-container-highest);
+    border-color: rgba(204, 120, 92, 0.32);
+    box-shadow:
+            0 14px 40px rgba(45, 42, 35, 0.10),
+            0 0 0 1px rgba(204, 120, 92, 0.16);
+}
+.eakp-empty__card:hover::before { opacity: 1; }
+.eakp-empty__card:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+.eakp-empty__card-icon {
+    font-size: 24px;
+    color: var(--accent);
+    align-self: flex-start;
+    line-height: 1;
+    transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.eakp-empty__card--featured .eakp-empty__card-icon { font-size: 30px; }
+.eakp-empty__card:hover .eakp-empty__card-icon {
+    transform: translate3d(0, -2px, 0) scale(1.06);
+}
+.eakp-empty__card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: -0.005em;
+    line-height: 1.3;
+}
+.eakp-empty__card--featured .eakp-empty__card-title { font-size: 17px; }
+.eakp-empty__card-desc {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+.eakp-empty__card-arrow {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    font-size: 16px;
+    color: var(--text-muted);
+    opacity: 0;
+    transform: translate3d(-4px, 4px, 0);
+    transition:
+            opacity   220ms cubic-bezier(0.22, 1, 0.36, 1),
+            transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.eakp-empty__card:hover .eakp-empty__card-arrow {
+    opacity: 1;
+    color: var(--accent);
+    transform: translate3d(0, 0, 0);
+}
+
+/* Tablet / mobile: stack vertically, featured loses its row-span */
+@media (max-width: 720px) {
+    .eakp-empty { padding: 40px 16px 32px; }
+    .eakp-empty__grid { grid-template-columns: 1fr; }
+    .eakp-empty__card--featured { grid-row: auto; }
+    .eakp-empty__head { font-size: clamp(28px, 8vw, 38px); }
+    .eakp-empty__sub  { margin-bottom: 28px; }
+}
+
+/* Touch devices: drop the magnetic translate fallback hover */
+@media (hover: none) {
+    .eakp-empty__card:hover {
+        transform: translate3d(0, 0, 0) scale(1);
+    }
+}
+
+/* Accessibility: respect reduced motion by killing spatial entrance & loops */
+@media (prefers-reduced-motion: reduce) {
+    .eakp-empty__glow--a,
+    .eakp-empty__glow--b,
+    .eakp-empty__greet-dot {
+        animation: none !important;
+    }
+    .eakp-empty__greet,
+    .eakp-empty__word,
+    .eakp-empty__sub,
+    .eakp-empty__card {
+        animation-duration: 0.01ms !important;
+        opacity: 1 !important;
+        transform: none !important;
+        filter: none !important;
+    }
+}
+
+/* ------------------------------------------------------------ */
+/* PREMIUM AUTH OVERLAY — Phase 2 enhancements (additive)       */
+/* ------------------------------------------------------------ */
+
+/* Use Source Serif display on auth headings */
+.auth-card-header h1 {
+    font-family: var(--font-display) !important;
+    font-size: var(--text-3xl) !important;
+    line-height: 1.06 !important;
+    letter-spacing: -0.022em !important;
+    font-weight: 600 !important;
+    text-wrap: balance;
+    background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.auth-card-header p {
+    font-size: var(--text-md) !important;
+    line-height: 1.55;
+    color: var(--text-secondary);
+    text-wrap: pretty;
+    max-width: 38ch;
+}
+.auth-left-bottom h2 {
+    font-family: var(--font-display) !important;
+    font-size: var(--text-4xl) !important;
+    line-height: 1.02 !important;
+    letter-spacing: -0.028em !important;
+    font-weight: 600 !important;
+    text-wrap: balance;
+}
+.auth-left-bottom p {
+    font-size: var(--text-md);
+    line-height: 1.6;
+    max-width: 44ch;
+    text-wrap: pretty;
+}
+
+/* Premium card lift on enter */
+.auth-card {
+    transition:
+            transform var(--dur-medium) var(--ease-out),
+            box-shadow var(--dur-medium) var(--ease-out),
+            border-color var(--dur-base) var(--ease-out) !important;
+}
+.auth-card:hover {
+    box-shadow: var(--shadow-xl), 0 0 60px rgba(232, 150, 113, 0.10) !important;
+    border-color: rgba(232, 150, 113, 0.22) !important;
+}
+
+/* Primary CTA — magnetic-ready, premium glow */
+.btn-primary {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-pill) !important;
+    padding: 0.95rem 1.5rem !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.005em;
+    transition:
+            transform var(--dur-fast) var(--ease-out),
+            box-shadow var(--dur-base) var(--ease-out),
+            filter var(--dur-base) var(--ease-out) !important;
+    will-change: transform;
+}
+.btn-primary::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+            110deg,
+            transparent 28%,
+            rgba(255, 255, 255, 0.22) 46%,
+            transparent 64%
+    );
+    transform: translateX(-110%);
+    transition: transform 720ms var(--ease-out);
+    pointer-events: none;
+}
+.btn-primary:hover::after { transform: translateX(110%); }
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 40px rgba(204, 120, 92, 0.32), var(--shadow-glow);
+}
+.btn-primary:active { transform: translateY(0) scale(0.985); }
+
+/* OAuth button polish */
+.btn-oauth {
+    transition:
+            transform var(--dur-fast) var(--ease-out),
+            border-color var(--dur-base) var(--ease-out),
+            background var(--dur-base) var(--ease-out) !important;
+}
+.btn-oauth:hover {
+    transform: translateY(-1px);
+    border-color: var(--accent) !important;
+}
+.btn-oauth:active { transform: translateY(0) scale(0.985); }
+
+/* Input wrap — refined focus state */
+.form-group .input-wrap {
+    transition:
+            border-color var(--dur-base) var(--ease-out),
+            box-shadow var(--dur-base) var(--ease-out),
+            background var(--dur-base) var(--ease-out);
+}
+.form-group .input-wrap:focus-within {
+    box-shadow: 0 0 0 4px rgba(232, 150, 113, 0.10),
+    0 8px 24px rgba(232, 150, 113, 0.12);
+}
+.form-group input {
+    font-size: var(--text-md);
+    letter-spacing: -0.005em;
+}
+
+/* Ambient glows — slower, more cinematic drift */
+.auth-ambient .glow-1,
+.auth-ambient .glow-2,
+.auth-ambient .glow-3 {
+    transition: opacity 1.2s var(--ease-out);
+}
+
+/* Card entrance — cinematic */
+@keyframes eakp-auth-card-in {
+    0% { opacity: 0; transform: translate3d(0, 32px, 0) scale(0.98); filter: blur(8px); }
+    100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); filter: blur(0); }
+}
+.auth-card {
+    animation: eakp-auth-card-in 720ms var(--ease-out) both;
+}
+
+/* Hero copy entrance — word stagger via line splits */
+@keyframes eakp-auth-line-in {
+    0% { opacity: 0; transform: translate3d(0, 28px, 0); filter: blur(6px); }
+    100% { opacity: 1; transform: translate3d(0, 0, 0); filter: blur(0); }
+}
+.auth-left-bottom h2 {
+    animation: eakp-auth-line-in 760ms var(--ease-out) 120ms both;
+}
+.auth-left-bottom p {
+    animation: eakp-auth-line-in 760ms var(--ease-out) 260ms both;
+}
+.auth-status-pill {
+    animation: eakp-auth-line-in 600ms var(--ease-out) 420ms both;
+}
+
+/* Card header stagger */
+.auth-card-header h1 { animation: eakp-auth-line-in 600ms var(--ease-out) 180ms both; }
+.auth-card-header p  { animation: eakp-auth-line-in 600ms var(--ease-out) 280ms both; }
+.auth-card .form-group { animation: eakp-auth-line-in 600ms var(--ease-out) both; }
+.auth-card .form-group:nth-of-type(1) { animation-delay: 340ms; }
+.auth-card .form-group:nth-of-type(2) { animation-delay: 400ms; }
+.auth-card .form-group:nth-of-type(3) { animation-delay: 460ms; }
+.auth-card .form-group:nth-of-type(4) { animation-delay: 520ms; }
+.auth-card .form-group:nth-of-type(5) { animation-delay: 580ms; }
+.auth-card form .btn-primary { animation: eakp-auth-line-in 600ms var(--ease-out) 640ms both; }
+.auth-card .divider { animation: eakp-auth-line-in 500ms var(--ease-out) 700ms both; }
+.auth-card .oauth-buttons { animation: eakp-auth-line-in 500ms var(--ease-out) 760ms both; }
+.auth-card .auth-footer { animation: eakp-auth-line-in 500ms var(--ease-out) 820ms both; }
+
+/* Reduced motion fallback for all auth animations */
+@media (prefers-reduced-motion: reduce) {
+    .auth-card,
+    .auth-left-bottom h2,
+    .auth-left-bottom p,
+    .auth-status-pill,
+    .auth-card-header h1,
+    .auth-card-header p,
+    .auth-card .form-group,
+    .auth-card form .btn-primary,
+    .auth-card .divider,
+    .auth-card .oauth-buttons,
+    .auth-card .auth-footer {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+        filter: none !important;
+    }
+}
+
+/* Grain noise overlay on auth-page (subtle texture) */
+.auth-page {
+    position: relative;
+    isolation: isolate;
+}
+.auth-page > .auth-grain {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.05;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0'/></filter><rect width='220' height='220' filter='url(%23n)'/></svg>");
+    background-size: 220px 220px;
+}
+[data-theme="light"] .auth-page > .auth-grain { opacity: 0.035; mix-blend-mode: multiply; }
+
+/* ------------------------------------------------------------ */
+/* PREMIUM CHAT SHELL — Phase 3 (additive)                       */
+/* ------------------------------------------------------------ */
+
+/* Sidebar — refined border, smoother backdrop */
+.sidebar {
+    transition: transform var(--dur-medium) var(--ease-out),
+    background var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out);
+    backdrop-filter: saturate(140%) blur(8px);
+    -webkit-backdrop-filter: saturate(140%) blur(8px);
+}
+
+/* Brand text in serif */
+.sidebar-brand-text h2 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+    font-weight: 600;
+}
+
+/* New chat button — premium */
+.new-chat-btn {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-lg) !important;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    transition:
+            transform var(--dur-fast) var(--ease-out),
+            box-shadow var(--dur-base) var(--ease-out),
+            background var(--dur-base) var(--ease-out) !important;
+    will-change: transform;
+}
+.new-chat-btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.18) 50%, transparent 70%);
+    transform: translateX(-110%);
+    transition: transform 700ms var(--ease-out);
+    pointer-events: none;
+}
+.new-chat-btn:hover::after { transform: translateX(110%); }
+.new-chat-btn:hover { transform: translateY(-1px); }
+.new-chat-btn:active { transform: translateY(0) scale(0.985); }
+
+/* Conversation list items — smoother hover + accent bar on active */
+.conv-item {
+    position: relative;
+    transition:
+            background var(--dur-base) var(--ease-out),
+            color var(--dur-base) var(--ease-out),
+            transform var(--dur-fast) var(--ease-out),
+            padding var(--dur-base) var(--ease-out) !important;
+    border-radius: var(--radius-md) !important;
+}
+.conv-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 3px;
+    height: 0;
+    background: var(--accent);
+    border-radius: 0 var(--radius-pill) var(--radius-pill) 0;
+    transform: translateY(-50%);
+    transition: height var(--dur-medium) var(--ease-spring);
+    pointer-events: none;
+}
+.conv-item:hover {
+    transform: translateX(2px);
+}
+.conv-item:hover::before { height: 14px; }
+.conv-item.active::before { height: 60%; }
+.conv-item.active {
+    box-shadow: var(--shadow-inner);
+}
+
+/* Sidebar nav items — same accent-bar treatment */
+.sidebar-nav-item {
+    position: relative;
+    transition:
+            background var(--dur-base) var(--ease-out),
+            color var(--dur-base) var(--ease-out),
+            transform var(--dur-fast) var(--ease-out) !important;
+}
+.sidebar-nav-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 3px;
+    height: 0;
+    background: var(--accent);
+    border-radius: 0 var(--radius-pill) var(--radius-pill) 0;
+    transform: translateY(-50%);
+    transition: height var(--dur-medium) var(--ease-spring);
+    pointer-events: none;
+}
+.sidebar-nav-item:hover { transform: translateX(2px); }
+.sidebar-nav-item:hover::before { height: 14px; }
+.sidebar-nav-item.active::before { height: 60%; }
+
+/* Sidebar user — subtle hover */
+.sidebar-user {
+    transition:
+            background var(--dur-base) var(--ease-out),
+            transform var(--dur-fast) var(--ease-out),
+            border-color var(--dur-base) var(--ease-out) !important;
+}
+.sidebar-user:hover { transform: translateY(-1px); }
+
+/* Search input */
+.sidebar-search {
+    transition:
+            border-color var(--dur-base) var(--ease-out),
+            box-shadow var(--dur-base) var(--ease-out),
+            background var(--dur-base) var(--ease-out);
+}
+.sidebar-search:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px rgba(232,150,113,0.10);
+}
+
+/* Documents panel — premium slide-in */
+@keyframes eakp-docs-in {
+    0% { opacity: 0; transform: translate3d(20px, 0, 0); }
+    100% { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+.docs-panel {
+    animation: eakp-docs-in 480ms var(--ease-out) both;
+    backdrop-filter: saturate(140%) blur(12px);
+    -webkit-backdrop-filter: saturate(140%) blur(12px);
+}
+
+/* Doc item — refined hover with chevron reveal */
+.doc-item {
+    transition:
+            background var(--dur-base) var(--ease-out),
+            border-color var(--dur-base) var(--ease-out),
+            transform var(--dur-fast) var(--ease-out),
+            box-shadow var(--dur-base) var(--ease-out) !important;
+}
+.doc-item:hover {
+    transform: translateX(2px);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Upload zone — premium drag-over */
+.upload-zone {
+    transition:
+            border-color var(--dur-base) var(--ease-out),
+            background var(--dur-base) var(--ease-out),
+            box-shadow var(--dur-base) var(--ease-out),
+            transform var(--dur-fast) var(--ease-out) !important;
+}
+.upload-zone:hover {
+    transform: translateY(-1px);
+}
+
+/* Chat header — refined backdrop */
+.chat-header {
+    backdrop-filter: saturate(140%) blur(12px);
+    -webkit-backdrop-filter: saturate(140%) blur(12px);
+    transition: background var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out);
+}
+
+/* Chat header title — serif */
+.chat-header h2,
+.chat-header .chat-title {
+    font-family: var(--font-display);
+    letter-spacing: -0.018em;
+    font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .docs-panel { animation: none !important; opacity: 1 !important; transform: none !important; }
+    .conv-item:hover, .sidebar-nav-item:hover, .sidebar-user:hover,
+    .doc-item:hover, .upload-zone:hover, .new-chat-btn:hover {
+        transform: none !important;
+    }
+    .conv-item::before, .sidebar-nav-item::before { transition: none !important; }
+}
+
+/* ------------------------------------------------------------ */
+/* PREMIUM MESSAGES + COMPOSER — Phase 4 (additive)              */
+/* ------------------------------------------------------------ */
+
+/* Message entrance — staggered slide-up + blur */
+@keyframes eakp-message-in {
+    0% { opacity: 0; transform: translate3d(0, 14px, 0); filter: blur(4px); }
+    100% { opacity: 1; transform: translate3d(0, 0, 0); filter: blur(0); }
+}
+.message {
+    animation: eakp-message-in 420ms var(--ease-out) both;
+}
+.message.user { animation-duration: 360ms; }
+.message.assistant { animation-duration: 440ms; }
+
+/* Message bubble hover — subtle lift */
+.message-bubble {
+    transition:
+            box-shadow var(--dur-base) var(--ease-out),
+            border-color var(--dur-base) var(--ease-out),
+            transform var(--dur-fast) var(--ease-out) !important;
+}
+.message:hover .message-bubble {
+    box-shadow: var(--shadow-md);
+}
+
+/* Message text — refined typography */
+.message-content {
+    font-size: var(--text-md);
+    line-height: 1.65;
+    letter-spacing: -0.003em;
+}
+.message-content p { margin-bottom: 0.85em; }
+.message-content p:last-child { margin-bottom: 0; }
+
+/* Headings inside messages get serif treatment */
+.message-content h1,
+.message-content h2,
+.message-content h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+    font-weight: 600;
+    line-height: 1.2;
+    margin-top: 1.2em;
+    margin-bottom: 0.4em;
+    text-wrap: balance;
+}
+.message-content h1 { font-size: var(--text-2xl); }
+.message-content h2 { font-size: var(--text-xl); }
+.message-content h3 { font-size: var(--text-lg); }
+
+/* Code blocks — premium mono with subtle inner border */
+.message-content pre {
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-inner);
+}
+.message-content code {
+    font-family: var(--font-mono);
+    font-variant-ligatures: none;
+    font-size: 0.92em;
+}
+
+/* Code block header (if present) */
+.code-block-header {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.04em;
+    text-transform: lowercase;
+}
+
+/* Streaming indicator — refined dot pulse */
+@keyframes eakp-stream-dot {
+    0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+    40% { opacity: 1; transform: scale(1.1); }
+}
+.streaming-indicator span,
+.typing-indicator span {
+    animation: eakp-stream-dot 1.2s var(--ease-in-out) infinite;
+}
+.streaming-indicator span:nth-child(2),
+.typing-indicator span:nth-child(2) { animation-delay: 0.15s; }
+.streaming-indicator span:nth-child(3),
+.typing-indicator span:nth-child(3) { animation-delay: 0.30s; }
+
+/* Composer / input wrapper — premium focus state */
+.input-wrapper {
+    position: relative;
+    transition:
+            border-color var(--dur-base) var(--ease-out),
+            box-shadow var(--dur-base) var(--ease-out),
+            background var(--dur-base) var(--ease-out),
+            transform var(--dur-fast) var(--ease-out) !important;
+    backdrop-filter: saturate(140%) blur(10px);
+    -webkit-backdrop-filter: saturate(140%) blur(10px);
+}
+.input-wrapper:focus-within {
+    border-color: rgba(232, 150, 113, 0.45) !important;
+    box-shadow: 0 0 0 4px rgba(232, 150, 113, 0.08),
+    0 12px 40px rgba(232, 150, 113, 0.10),
+    var(--shadow-md) !important;
+}
+.input-wrapper textarea {
+    font-size: var(--text-md);
+    line-height: 1.55;
+    letter-spacing: -0.003em;
+}
+
+/* Send button — magnetic-ready, premium glow */
+.send-btn {
+    position: relative;
+    overflow: hidden;
+    transition:
+            transform var(--dur-fast) var(--ease-out),
+            box-shadow var(--dur-base) var(--ease-out),
+            background var(--dur-base) var(--ease-out),
+            opacity var(--dur-base) var(--ease-out) !important;
+    will-change: transform;
+}
+.send-btn:not(:disabled):hover {
+    transform: translateY(-1px) scale(1.04);
+    box-shadow: 0 8px 28px rgba(204, 120, 92, 0.40), var(--shadow-glow);
+}
+.send-btn:not(:disabled):active {
+    transform: translateY(0) scale(0.96);
+}
+.send-btn:disabled { opacity: 0.4; }
+
+/* Attachment chips */
+.attachment-chip,
+.attached-doc-chip {
+    transition:
+            transform var(--dur-fast) var(--ease-out),
+            background var(--dur-base) var(--ease-out),
+            border-color var(--dur-base) var(--ease-out);
+    will-change: transform;
+}
+.attachment-chip:hover,
+.attached-doc-chip:hover {
+    transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .message { animation: none !important; opacity: 1 !important; transform: none !important; filter: none !important; }
+    .streaming-indicator span, .typing-indicator span { animation: none !important; }
+    .send-btn:hover, .attachment-chip:hover, .attached-doc-chip:hover { transform: none !important; }
+}
+
+/* ------------------------------------------------------------ */
+/* PREMIUM ADMIN — Phase 5 (additive)                            */
+/* ------------------------------------------------------------ */
+
+/* Admin page heading — serif */
+.admin-page h1,
+.admin-page .admin-title {
+    font-family: var(--font-display);
+    font-size: var(--text-3xl);
+    letter-spacing: -0.022em;
+    line-height: 1.08;
+    font-weight: 600;
+    text-wrap: balance;
+}
+.admin-page h2 {
+    font-family: var(--font-display);
+    letter-spacing: -0.018em;
+    font-weight: 600;
+}
+
+/* Stat cards — premium entrance + hover */
+@keyframes eakp-stat-in {
+    0% { opacity: 0; transform: translate3d(0, 18px, 0); }
+    100% { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+.admin-stat-card {
+    animation: eakp-stat-in 520ms var(--ease-out) both;
+    transition:
+            transform var(--dur-base) var(--ease-out),
+            box-shadow var(--dur-base) var(--ease-out),
+            border-color var(--dur-base) var(--ease-out) !important;
+    will-change: transform;
+    position: relative;
+    isolation: isolate;
+}
+.admin-stat-card:nth-child(1) { animation-delay: 60ms; }
+.admin-stat-card:nth-child(2) { animation-delay: 120ms; }
+.admin-stat-card:nth-child(3) { animation-delay: 180ms; }
+.admin-stat-card:nth-child(4) { animation-delay: 240ms; }
+.admin-stat-card:nth-child(5) { animation-delay: 300ms; }
+.admin-stat-card:nth-child(6) { animation-delay: 360ms; }
+.admin-stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+    border-color: rgba(232,150,113,0.30) !important;
+}
+
+/* Stat values — tabular numerals, serif heads */
+.admin-stat-card .stat-value,
+.admin-stat-card h3 {
+    font-family: var(--font-display);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+    letter-spacing: -0.025em;
+    line-height: 1;
+    font-weight: 600;
+}
+
+/* Stat label */
+.admin-stat-card .stat-label {
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+/* Spotlight border on hover (cursor-tracking) */
+.admin-stat-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(
+            260px circle at var(--mx, 50%) var(--my, 50%),
+            rgba(232,150,113,0.12),
+            transparent 50%
+    );
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--dur-base) var(--ease-out);
+    z-index: 1;
+}
+.admin-stat-card:hover::after { opacity: 1; }
+
+/* Admin cards / table polish */
+.admin-card {
+    transition:
+            box-shadow var(--dur-base) var(--ease-out),
+            border-color var(--dur-base) var(--ease-out) !important;
+}
+.admin-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.admin-table th {
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.10em;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+.admin-table td {
+    font-variant-numeric: tabular-nums;
+    transition: background var(--dur-base) var(--ease-out);
+}
+
+/* Tab/toggle pills */
+.admin-toggle button,
+.admin-tabs button {
+    transition:
+            background var(--dur-base) var(--ease-out),
+            color var(--dur-base) var(--ease-out),
+            transform var(--dur-fast) var(--ease-out),
+            box-shadow var(--dur-base) var(--ease-out) !important;
+}
+.admin-toggle button:active,
+.admin-tabs button:active { transform: scale(0.97); }
+
+@media (prefers-reduced-motion: reduce) {
+    .admin-stat-card { animation: none !important; opacity: 1 !important; transform: none !important; }
+    .admin-stat-card:hover, .admin-toggle button:hover, .admin-tabs button:hover { transform: none !important; }
+    .admin-stat-card::after { display: none; }
+}
+
+/* ------------------------------------------------------------ */
+/* PREMIUM SECONDARY PAGES — Phase 6 (additive)                  */
+/* Settings / Help / Dashboard / NotFound                        */
+/* ------------------------------------------------------------ */
+
+/* -- Settings -- */
+.settings-page h1,
+.settings-page h2 {
+    font-family: var(--font-display);
+    letter-spacing: -0.020em;
+    font-weight: 600;
+    text-wrap: balance;
+}
+.settings-page h1 {
+    font-size: var(--text-3xl);
+    line-height: 1.08;
+}
+
+@keyframes eakp-section-in {
+    0% { opacity: 0; transform: translate3d(0, 12px, 0); }
+    100% { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+.settings-section,
+.settings-card,
+.help-section,
+.help-card {
+    animation: eakp-section-in 540ms var(--ease-out) both;
+    transition:
+            box-shadow var(--dur-base) var(--ease-out),
+            border-color var(--dur-base) var(--ease-out) !important;
+}
+.settings-section:nth-child(1), .help-section:nth-child(1) { animation-delay: 60ms; }
+.settings-section:nth-child(2), .help-section:nth-child(2) { animation-delay: 120ms; }
+.settings-section:nth-child(3), .help-section:nth-child(3) { animation-delay: 180ms; }
+.settings-section:nth-child(4), .help-section:nth-child(4) { animation-delay: 240ms; }
+.settings-section:nth-child(5), .help-section:nth-child(5) { animation-delay: 300ms; }
+.settings-section:hover,
+.help-section:hover { box-shadow: var(--shadow-md); }
+
+/* Settings tabs */
+.settings-tabs button {
+    position: relative;
+    transition:
+            color var(--dur-base) var(--ease-out),
+            background var(--dur-base) var(--ease-out) !important;
+}
+.settings-tabs button::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -1px;
+    width: 0;
+    height: 2px;
+    background: var(--accent);
+    transform: translateX(-50%);
+    transition: width var(--dur-medium) var(--ease-spring);
+    border-radius: var(--radius-pill);
+}
+.settings-tabs button.active::after,
+.settings-tabs button[aria-selected="true"]::after { width: 60%; }
+
+/* Form rows in settings */
+.settings-row {
+    transition: background var(--dur-base) var(--ease-out);
+}
+
+/* -- Help -- */
+.help-page h1, .help-page h2 {
+    font-family: var(--font-display);
+    letter-spacing: -0.020em;
+    font-weight: 600;
+    text-wrap: balance;
+}
+.help-page h1 {
+    font-size: var(--text-3xl);
+    line-height: 1.08;
+}
+
+/* FAQ items */
+.faq-item, .help-faq summary {
+    transition:
+            background var(--dur-base) var(--ease-out),
+            border-color var(--dur-base) var(--ease-out),
+            transform var(--dur-fast) var(--ease-out) !important;
+}
+.faq-item:hover, .help-faq summary:hover {
+    transform: translateX(2px);
+}
+
+/* -- Dashboard (Tailwind page) — bridge to design tokens -- */
+.dashboard-root h1,
+.dashboard-root h2,
+.dashboard-root .display-heading {
+    font-family: var(--font-display);
+    letter-spacing: -0.020em;
+    font-weight: 600;
+    text-wrap: balance;
+}
+
+/* Dashboard stat numbers — tabular */
+.dashboard-root .stat-value,
+.dashboard-root .metric-value {
+    font-family: var(--font-display);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+    letter-spacing: -0.025em;
+    line-height: 1;
+}
+
+/* Dashboard cards — premium hover */
+.dashboard-root .stat-card,
+.dashboard-root .dashboard-card {
+    transition:
+            transform var(--dur-base) var(--ease-out),
+            box-shadow var(--dur-base) var(--ease-out),
+            border-color var(--dur-base) var(--ease-out) !important;
+}
+.dashboard-root .stat-card.stat-card-visible:hover,
+.dashboard-root .dashboard-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+/* -- 404 / NotFound -- */
+.not-found-page,
+.notfound-page {
+    min-height: 100dvh;
+    display: grid;
+    place-items: center;
+    padding: var(--space-8);
+    text-align: center;
+    position: relative;
+    isolation: isolate;
+}
+.not-found-page h1,
+.notfound-page h1 {
+    font-family: var(--font-display);
+    font-size: var(--text-display);
+    line-height: 1;
+    letter-spacing: -0.030em;
+    font-weight: 600;
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: eakp-auth-line-in 700ms var(--ease-out) 80ms both;
+}
+.not-found-page p,
+.notfound-page p {
+    font-size: var(--text-md);
+    color: var(--text-secondary);
+    max-width: 50ch;
+    margin: 0.5rem auto 1.5rem;
+    text-wrap: pretty;
+    animation: eakp-auth-line-in 700ms var(--ease-out) 220ms both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .settings-section, .settings-card, .help-section, .help-card,
+    .not-found-page h1, .not-found-page p,
+    .notfound-page h1, .notfound-page p {
+        animation: none !important; opacity: 1 !important; transform: none !important;
+    }
+    .settings-tabs button::after { transition: none !important; }
+    .faq-item:hover, .help-faq summary:hover { transform: none !important; }
+}
+
+/* ------------------------------------------------------------ */
+/* PREMIUM OVERLAYS — Phase 7 (additive)                         */
+/* Toast, ConfirmDialog, LegalModal, CookieConsent, BottomNav    */
+/* ------------------------------------------------------------ */
+
+/* Toast — refined slide + spring */
+@keyframes eakp-toast-in {
+    0% { opacity: 0; transform: translate3d(0, 20px, 0) scale(0.96); }
+    60% { opacity: 1; transform: translate3d(0, -3px, 0) scale(1.01); }
+    100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+.toast {
+    animation: eakp-toast-in 460ms var(--ease-out) both;
+    backdrop-filter: saturate(140%) blur(14px);
+    -webkit-backdrop-filter: saturate(140%) blur(14px);
+    box-shadow: var(--shadow-lg);
+    border-radius: var(--radius-lg) !important;
+    transition: opacity var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--ease-out);
+}
+.toast-container {
+    z-index: var(--z-toast);
+}
+
+/* Confirm overlay — premium backdrop */
+@keyframes eakp-overlay-in {
+    from { opacity: 0; backdrop-filter: blur(0); }
+    to { opacity: 1; backdrop-filter: blur(8px); }
+}
+.confirm-overlay {
+    animation: eakp-overlay-in 280ms var(--ease-out) both;
+    backdrop-filter: saturate(120%) blur(8px);
+    -webkit-backdrop-filter: saturate(120%) blur(8px);
+    z-index: var(--z-modal);
+}
+
+@keyframes eakp-dialog-in {
+    0% { opacity: 0; transform: translate3d(0, 14px, 0) scale(0.94); }
+    100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+.confirm-dialog {
+    animation: eakp-dialog-in 380ms var(--ease-spring) both;
+    box-shadow: var(--shadow-xl) !important;
+    border-radius: var(--radius-xl) !important;
+}
+.confirm-dialog h3 {
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    letter-spacing: -0.018em;
+    font-weight: 600;
+}
+.confirm-dialog p {
+    font-size: var(--text-md);
+    line-height: 1.55;
+    color: var(--text-secondary);
+    text-wrap: pretty;
+}
+.confirm-cancel-btn,
+.confirm-ok-btn {
+    transition:
+            transform var(--dur-fast) var(--ease-out),
+            background var(--dur-base) var(--ease-out),
+            border-color var(--dur-base) var(--ease-out),
+            box-shadow var(--dur-base) var(--ease-out) !important;
+}
+.confirm-cancel-btn:hover,
+.confirm-ok-btn:hover { transform: translateY(-1px); }
+.confirm-cancel-btn:active,
+.confirm-ok-btn:active { transform: translateY(0) scale(0.97); }
+
+/* LegalModal — same family */
+.legal-modal-overlay,
+.legal-overlay {
+    animation: eakp-overlay-in 280ms var(--ease-out) both;
+    backdrop-filter: saturate(120%) blur(8px);
+    -webkit-backdrop-filter: saturate(120%) blur(8px);
+    z-index: var(--z-modal);
+}
+.legal-modal,
+.legal-dialog {
+    animation: eakp-dialog-in 420ms var(--ease-spring) both;
+    box-shadow: var(--shadow-xl);
+    border-radius: var(--radius-xl);
+}
+.legal-modal h2, .legal-dialog h2,
+.legal-modal h1, .legal-dialog h1 {
+    font-family: var(--font-display);
+    letter-spacing: -0.020em;
+    font-weight: 600;
+}
+
+/* CookieConsent — slide-in from bottom */
+@keyframes eakp-cookie-in {
+    0% { opacity: 0; transform: translate3d(0, 24px, 0); }
+    100% { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+.cookie-banner {
+    animation: eakp-cookie-in 520ms var(--ease-out) 280ms both;
+    backdrop-filter: saturate(140%) blur(14px);
+    -webkit-backdrop-filter: saturate(140%) blur(14px);
+    z-index: var(--z-overlay);
+}
+.cookie-banner button {
+    transition:
+            transform var(--dur-fast) var(--ease-out),
+            background var(--dur-base) var(--ease-out),
+            border-color var(--dur-base) var(--ease-out) !important;
+}
+.cookie-banner button:hover { transform: translateY(-1px); }
+.cookie-banner button:active { transform: translateY(0) scale(0.97); }
+
+/* BottomNav — refined */
+.bottom-nav {
+    backdrop-filter: saturate(140%) blur(16px);
+    -webkit-backdrop-filter: saturate(140%) blur(16px);
+    z-index: var(--z-sticky);
+    transition: background var(--dur-base) var(--ease-out);
+}
+.bottom-nav-item {
+    position: relative;
+    transition:
+            color var(--dur-base) var(--ease-out),
+            background var(--dur-base) var(--ease-out),
+            transform var(--dur-fast) var(--ease-out) !important;
+}
+.bottom-nav-item:active { transform: scale(0.94); }
+.bottom-nav-item.active::after {
+    content: '';
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+}
+
+/* NetworkBanner */
+@keyframes eakp-banner-in {
+    0% { opacity: 0; transform: translate3d(0, -100%, 0); }
+    100% { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+.network-banner {
+    animation: eakp-banner-in 380ms var(--ease-out) both;
+    z-index: var(--z-sticky);
+}
+
+/* KeyboardShortcuts modal — same dialog family */
+.shortcuts-overlay,
+.kbd-shortcuts-overlay {
+    animation: eakp-overlay-in 280ms var(--ease-out) both;
+    backdrop-filter: saturate(120%) blur(8px);
+    -webkit-backdrop-filter: saturate(120%) blur(8px);
+    z-index: var(--z-modal);
+}
+.shortcuts-modal,
+.kbd-shortcuts-modal,
+.shortcuts-dialog {
+    animation: eakp-dialog-in 420ms var(--ease-spring) both;
+    box-shadow: var(--shadow-xl);
+    border-radius: var(--radius-xl);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .toast, .confirm-overlay, .confirm-dialog,
+    .legal-modal-overlay, .legal-overlay, .legal-modal, .legal-dialog,
+    .cookie-banner, .network-banner,
+    .shortcuts-overlay, .kbd-shortcuts-overlay, .shortcuts-modal, .kbd-shortcuts-modal, .shortcuts-dialog {
+        animation: none !important; opacity: 1 !important; transform: none !important;
+        backdrop-filter: saturate(120%) blur(2px);
+        -webkit-backdrop-filter: saturate(120%) blur(2px);
+    }
+    .bottom-nav-item:active, .cookie-banner button:hover,
+    .confirm-cancel-btn:hover, .confirm-ok-btn:hover { transform: none !important; }
+}
+
+/* ------------------------------------------------------------ */
+/* PREMIUM RESPONSIVE POLISH — Phase 8 (additive)                */
+/* Cross-cutting responsive guarantees                           */
+/* ------------------------------------------------------------ */
+
+/* Touch target floor — interactive elements >= 44x44 on coarse pointers */
+@media (hover: none) and (pointer: coarse) {
+    .conv-item,
+    .sidebar-nav-item,
+    .bottom-nav-item,
+    .doc-item,
+    .btn-oauth,
+    .icon-btn,
+    .password-toggle {
+        min-height: 44px;
+    }
+    button:not(.link-btn):not(.confirm-cancel-btn):not(.confirm-ok-btn) {
+        min-height: 44px;
+    }
+}
+
+/* Prevent text overflow horizontally on any narrow screen */
+@media (max-width: 540px) {
+    .auth-card-header h1 {
+        font-size: var(--text-2xl) !important;
+        line-height: 1.1 !important;
+    }
+    .auth-left-bottom h2 {
+        font-size: var(--text-3xl) !important;
+    }
+    .admin-page h1,
+    .settings-page h1,
+    .help-page h1 {
+        font-size: var(--text-2xl) !important;
+    }
+    .not-found-page h1,
+    .notfound-page h1 {
+        font-size: clamp(3rem, 14vw, 5rem);
+    }
+    .message-content {
+        font-size: var(--text-base);
+    }
+    /* Avoid horizontal scroll from translate transforms */
+    .conv-item:hover,
+    .sidebar-nav-item:hover,
+    .doc-item:hover {
+        transform: none !important;
+    }
+}
+
+/* Tablet — softer entrance distance */
+@media (min-width: 541px) and (max-width: 1024px) {
+    .auth-card-header h1 {
+        font-size: var(--text-2xl) !important;
+    }
+}
+
+/* Wide screens — generous max-widths */
+@media (min-width: 1440px) {
+    .message-content {
+        max-width: 78ch;
+    }
+}
+
+/* Ultra-wide guard rails */
+@media (min-width: 1920px) {
+    .auth-card {
+        max-width: 480px;
+    }
+}
+
+/* Safe-area for notched devices on key layouts */
+.auth-page,
+.chat-page,
+.main-content {
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Allow scroll containers to use dynamic viewport */
+.chat-messages,
+.sidebar-content,
+.docs-panel-content,
+.settings-page,
+.admin-page,
+.help-page {
+    min-height: 0;
+    overscroll-behavior: contain;
+}
+
+/* Ensure horizontal scroll never appears on root */
+html, body { overflow-x: hidden; }
+
+/* Focus-visible polish — visible accent ring across the app */
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}
+input:focus-visible,
+textarea:focus-visible {
+    outline: none; /* let .input-wrap handle the ring */
+}
+
+/* ════════════════════════════════════════════════════════════ */
+/* PHASE 9 MOBILE HOTFIXES — addresses mobile-review findings    */
+/* ════════════════════════════════════════════════════════════ */
+
+/* FIX 1: Strip the legacy mobile .auth-page pageEnter animation —
+   PageTransition (framer-motion) already handles enter on every route.
+   Stacking pageEnter + PageTransition + eakp-auth-card-in compounded
+   to ~5% visual opacity for 200ms on mobile. */
+@media (max-width: 768px) {
+    .auth-page {
+        animation: none !important;
+    }
+    /* Remove the entrance blur from auth-card on mobile —
+       PageTransition's wrapper already applies a 6px blur. Two
+       concurrent GPU blurs caused frame drops on low-end Android. */
+    .auth-card {
+        animation: none !important;
+        opacity: 0;
+        transform: translate3d(0, 16px, 0);
+        animation: eakp-auth-card-in-mobile 460ms var(--ease-out) 80ms both !important;
+    }
+}
+@keyframes eakp-auth-card-in-mobile {
+    0%   { opacity: 0; transform: translate3d(0, 16px, 0); }
+    100% { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+/* FIX 2: Suppress sticky :hover lift on auth card for touch devices.
+   On mobile, tapping any input/button inside the card triggers
+   ancestor :hover, which animated the card up 4px and left it there
+   until the next outside tap. */
+@media (hover: none) and (pointer: coarse) {
+    .auth-card:hover,
+    .admin-stat-card:hover,
+    .settings-section:hover,
+    .help-section:hover,
+    .dashboard-root .stat-card:hover,
+    .dashboard-root .dashboard-card:hover,
+    .doc-item:hover,
+    .context-file-item:hover,
+    .conv-item:hover,
+    .sidebar-nav-item:hover,
+    .toast:hover {
+        transform: none !important;
+    }
+}
+
+/* FIX 3: Phase 3 documents-panel rules targeted dead classes
+   (.docs-panel / .doc-item / .upload-zone). Re-map to the real
+   classes used by DocumentsPanel.jsx. */
+@keyframes eakp-context-panel-in {
+    0%   { opacity: 0; transform: translate3d(20px, 0, 0); }
+    100% { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+.context-panel.open {
+    animation: eakp-context-panel-in 480ms var(--ease-out) both;
+    backdrop-filter: saturate(140%) blur(12px);
+    -webkit-backdrop-filter: saturate(140%) blur(12px);
+}
+.context-file-item {
+    transition:
+            background var(--dur-base) var(--ease-out),
+            border-color var(--dur-base) var(--ease-out),
+            transform var(--dur-fast) var(--ease-out),
+            box-shadow var(--dur-base) var(--ease-out) !important;
+}
+.context-file-item:hover {
+    transform: translateX(2px);
+    box-shadow: var(--shadow-sm);
+}
+.context-dropzone {
+    transition:
+            border-color var(--dur-base) var(--ease-out),
+            background var(--dur-base) var(--ease-out),
+            box-shadow var(--dur-base) var(--ease-out),
+            transform var(--dur-fast) var(--ease-out) !important;
+}
+.context-dropzone:hover {
+    transform: translateY(-1px);
+}
+@media (prefers-reduced-motion: reduce) {
+    .context-panel.open { animation: none !important; opacity: 1 !important; transform: none !important; }
+    .context-file-item:hover, .context-dropzone:hover { transform: none !important; }
+}
+@media (hover: none) and (pointer: coarse) {
+    .context-file-item:hover, .context-dropzone:hover { transform: none !important; }
+}
+
+/* FIX 4: Confirm dialog buttons must hit the 44x44 touch floor.
+   The previous Phase 8 rule excluded .confirm-cancel-btn /
+   .confirm-ok-btn from the global min-height, leaving them at ~33px
+   on the highest-stakes (destructive) interaction in the app. */
+@media (hover: none) and (pointer: coarse) {
+    .confirm-cancel-btn,
+    .confirm-ok-btn {
+        min-height: 44px;
+        padding-inline: 1.25rem;
+    }
+}
+
+/* Additional safety: tiny icon-only buttons inside the composer and
+   message tools still need a comfortable tap target on mobile, but
+   the global 44px floor may distort them. Give them an explicit
+   44x44 with the icon centered. */
+@media (hover: none) and (pointer: coarse) {
+    .icon-btn,
+    .password-toggle,
+    .copy-btn,
+    .message-action-btn {
+        min-width: 44px;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+/* PageTransition X-slide guard: prevent horizontal scroll during the
+   28px enter / -22px exit on narrow viewports. */
+@media (max-width: 540px) {
+    .page-transition {
+        overflow-x: clip;
+    }
+    /* Fallback for browsers without overflow: clip (older Safari) */
+    @supports not (overflow: clip) {
+        .page-transition { overflow-x: hidden; }
+    }
+}
+
+/* Modals must remain scrollable + within viewport on small phones */
+@media (max-width: 540px) {
+    .confirm-dialog,
+    .legal-modal,
+    .legal-dialog,
+    .shortcuts-modal,
+    .kbd-shortcuts-modal,
+    .shortcuts-dialog {
+        max-height: calc(100dvh - 2rem);
+        max-width: calc(100vw - 1.5rem);
+        overflow-y: auto;
+        margin: 1rem;
     }
 }
