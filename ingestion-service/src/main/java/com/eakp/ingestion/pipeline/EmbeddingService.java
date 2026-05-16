@@ -36,6 +36,15 @@ public class EmbeddingService {
     @Value("${app.ingestion.batch-size:50}")
     private int batchSize;
 
+    /**
+     * Configured vector dimension. Must match the pgvector column.
+     * Wrong-dimension fallback vectors silently corrupt the index and are
+     * the root cause of "search returns nothing" bugs that look like a
+     * retrieval problem.
+     */
+    @Value("${spring.ai.vectorstore.pgvector.dimensions:1024}")
+    private int embeddingDimensions;
+
     private Timer embeddingTimer;
 
     @PostConstruct
@@ -85,9 +94,21 @@ public class EmbeddingService {
             EmbeddingRequest  request  = new EmbeddingRequest(texts, null);
             EmbeddingResponse response = embeddingModel.call(request);
 
-            return response.getResults().stream()
+            List<float[]> out = response.getResults().stream()
                     .map(r -> r.getOutput())
                     .toList();
+            // Defensive: a wrong-dim vector inserted into pgvector either
+            // throws at write-time or silently kills similarity scores.
+            // Validate upfront so the error is loud and recoverable.
+            for (float[] v : out) {
+                if (v == null || v.length != embeddingDimensions) {
+                    throw new IllegalStateException(
+                            "Embedding dimension mismatch: expected "
+                                    + embeddingDimensions + " got "
+                                    + (v == null ? "null" : v.length));
+                }
+            }
+            return out;
         } catch (Exception e) {
             log.error("Embedding batch failed, falling back to individual: {}",
                     e.getMessage());
@@ -100,13 +121,21 @@ public class EmbeddingService {
 
     private float[] embedSafe(String text) {
         try {
-            return embeddingModel.embed(text);
+            float[] v = embeddingModel.embed(text);
+            if (v == null || v.length != embeddingDimensions) {
+                throw new IllegalStateException(
+                        "Embedding dimension mismatch: expected "
+                                + embeddingDimensions + " got "
+                                + (v == null ? "null" : v.length));
+            }
+            return v;
         } catch (Exception e) {
             log.error("Failed to embed text snippet, returning zero vector: {}",
                     e.getMessage());
-            // Return zero vector on failure — chunk will have low similarity
-            // but won't crash the pipeline
-            return new float[768];
+            // Zero vector at the CONFIGURED dim — never hardcoded. A 768-dim
+            // fallback into a 1024-dim store used to throw at write-time or
+            // corrupt similarity scores.
+            return new float[embeddingDimensions];
         }
     }
 }

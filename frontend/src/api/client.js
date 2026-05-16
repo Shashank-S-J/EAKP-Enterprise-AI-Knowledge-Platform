@@ -260,8 +260,6 @@ export const conversations = {
 export function streamChat(conversationId, message, onToken, onDone, onError) {
     const url = `${BASE}/api/v1/chat/stream`;
     let controller = new AbortController();
-    let reconnectAttempts = 0;
-    const MAX_RECONNECT = 3;
 
     const doStream = (hdrs, retried = false) => {
         fetch(url, {
@@ -286,50 +284,99 @@ export function streamChat(conversationId, message, onToken, onDone, onError) {
                     onError("Stream failed: " + res.status);
                     return;
                 }
-                reconnectAttempts = 0; // Reset on successful connection
                 const reader = res.body.getReader();
                 const decoder = new TextDecoder();
                 let buffer = "";
-                let currentEvent = "";
-                while (true) {
+                // Proper SSE event accumulator. The previous implementation
+                // dispatched `onToken` per-line, which silently dropped newlines
+                // when the LLM emitted a token containing `\n` — Spring's
+                // ServerSentEventHttpMessageWriter splits such tokens across
+                // multiple `data:` lines per the SSE spec. We now buffer all
+                // `data:` lines until the blank line that terminates an event,
+                // then dispatch the joined payload with newlines preserved.
+                let evtType = "";
+                let evtData = [];
+
+                const dispatch = () => {
+                    if (!evtType && evtData.length === 0) return false;
+                    const data = evtData.join("\n");
+                    if (evtType === "done" || data === "[DONE]") {
+                        onDone();
+                        return true; // signals: stop reading
+                    }
+                    if (evtType === "error") {
+                        onError(data);
+                        return true;
+                    }
+                    // Default event type per SSE spec is "message"; for our
+                    // backend that means a token.
+                    onToken(data);
+                    evtType = "";
+                    evtData = [];
+                    return false;
+                };
+
+                let terminated = false;
+                while (!terminated) {
                     const { done, value } = await reader.read();
                     if (done) break;
                     buffer += decoder.decode(value, { stream: true });
+                    // Split on LF only — SSE allows CRLF/CR/LF, but Spring
+                    // emits LF. We strip trailing CR defensively.
                     const lines = buffer.split("\n");
                     buffer = lines.pop() || "";
-                    for (const line of lines) {
-                        if (line.startsWith("event:")) {
-                            currentEvent = line.slice(6).trim();
-                            if (currentEvent === "done") {
-                                onDone();
-                                return;
+                    for (const rawLine of lines) {
+                        const line = rawLine.endsWith("\r")
+                            ? rawLine.slice(0, -1)
+                            : rawLine;
+                        if (line === "") {
+                            // Event boundary → dispatch accumulated event.
+                            if (dispatch()) {
+                                terminated = true;
+                                break;
                             }
-                        } else if (line.startsWith("data:")) {
-                            const data = line.slice(5);
-                            if (data === "[DONE]") {
-                                onDone();
-                                return;
-                            }
-                            if (currentEvent === "error") {
-                                onError(data);
-                                return;
-                            }
-                            onToken(data);
+                            // Reset for next event.
+                            evtType = "";
+                            evtData = [];
+                            continue;
                         }
+                        if (line.startsWith(":")) {
+                            // SSE comment line — ignore (heartbeats).
+                            continue;
+                        }
+                        if (line.startsWith("event:")) {
+                            evtType = line.slice(6).trim();
+                            continue;
+                        }
+                        if (line.startsWith("data:")) {
+                            // Per SSE spec, strip ONE optional leading space.
+                            let d = line.slice(5);
+                            if (d.startsWith(" ")) d = d.slice(1);
+                            evtData.push(d);
+                            continue;
+                        }
+                        // id:/retry: lines — accepted, no-op for our needs.
                     }
                 }
-                onDone();
+                // Flush any final event the server forgot to terminate with a
+                // blank line (e.g., abrupt connection close after `event:done`).
+                if (!terminated) {
+                    dispatch();
+                    onDone();
+                }
             })
             .catch((e) => {
                 if (e.name === "AbortError") return;
-                // Auto-reconnect on network failure
-                if (reconnectAttempts < MAX_RECONNECT) {
-                    reconnectAttempts++;
-                    const delay = Math.min(1000 * 2 ** reconnectAttempts, 8000);
-                    setTimeout(() => doStream(authHeaders()), delay);
-                } else {
-                    onError("Connection lost. Please check your network and try again.");
-                }
+                // We intentionally do NOT auto-reconnect here. The backend
+                // persists the user message in `doOnComplete` of the LLM
+                // stream — if the first attempt reached that point before
+                // the network died, a silent retry would re-POST and
+                // duplicate the user message (and waste an LLM call).
+                // Surface the error so the user can hit "retry" on the
+                // assistant bubble, which slices the local state first.
+                onError(
+                    "Connection lost. Tap retry on the message to try again."
+                );
             });
     };
 

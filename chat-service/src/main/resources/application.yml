@@ -62,9 +62,13 @@ app:
   rag:
     chunk-size: 512
     chunk-overlap: 64
-    top-k-retrieve: 20          # Candidates from hybrid search
+    top-k-retrieve: 30          # Candidates from hybrid search
     top-k-rerank: 5             # Final chunks sent to LLM
     reranker: llm               # llm | cohere | none
+    similarity-threshold: 0.15  # Lower = more paraphrase recall; rerank filters noise
+    hyde-enabled: true          # Hypothetical Document Embeddings — expand vague queries
+    subquery-enabled: true      # Decompose comparative questions ("X vs Y") into sub-queries
+    mmr-similarity-threshold: 0.85   # Drop chunks with >85% token overlap to a kept chunk
     semantic-cache-threshold: 0.92
     cache-ttl-hours: 24
     max-conversation-messages: 10

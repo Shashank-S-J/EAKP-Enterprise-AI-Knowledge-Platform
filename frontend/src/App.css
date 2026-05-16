@@ -10227,6 +10227,7 @@ textarea:focus-visible {
         margin: 1rem;
     }
 }
+
 /* ════════════════════════════════════════════════════════════════ */
 /* PHASE 10 — REGISTER PAGE MOBILE FIXES                             */
 /* User report: register page is "not proper" on mobile.             */
@@ -10398,5 +10399,89 @@ textarea:focus-visible {
     .messages-area .message.assistant[aria-live="polite"],
     .input-status-banner {
         animation: none !important;
+    }
+}
+
+
+/* ════════════════════════════════════════════════════════════════ */
+/* PHASE 12 — REGISTER PASSWORD GRID + CHAT MOBILE COMPOSER FIX     */
+/*                                                                  */
+/* Root causes diagnosed:                                           */
+/* (1) Phase 9/10 attempted to stack the password+confirm grid on   */
+/*     mobile via [style*="gridTemplateColumns"]. React serializes  */
+/*     inline style props to KEBAB-case in the DOM, so that         */
+/*     attribute selector NEVER matched. The 2-col grid stayed on   */
+/*     mobile, producing the "two sections look bad" report.        */
+/*                                                                  */
+/* (2) BottomNav is position:fixed at viewport bottom (~64px tall). */
+/*     The chat's .input-area (composer + send button) sat behind   */
+/*     it on mobile — user could not see or tap Send, hence "chat   */
+/*     is blank, cannot send any requests".                         */
+/* ════════════════════════════════════════════════════════════════ */
+
+/* --- (1) Register password+confirm grid --- */
+
+.reg-password-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    min-width: 0;
+}
+
+@media (max-width: 768px) {
+    .reg-password-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+    }
+    .reg-password-grid > .form-group {
+        margin-bottom: 14px;
+    }
+    .reg-password-grid > .form-group:last-child {
+        margin-bottom: 0;
+    }
+}
+
+/* --- (2) Chat composer clearance for BottomNav on mobile --- */
+/*                                                                  */
+/* BottomNav is position:fixed, bottom:0 with ~56-64px height plus  */
+/* safe-area inset. The chat-page-root is height:100dvh, so the     */
+/* chat-layout grid fills the whole viewport — composer at the      */
+/* bottom of .chat-container was being overlapped by BottomNav.     */
+/*                                                                  */
+/* Fix: reserve space at the bottom of .chat-page-root for the      */
+/* BottomNav. Since chat-page-root is `overflow: hidden`, its       */
+/* children (top-nav + chat-layout) shrink to fit the remaining     */
+/* height, leaving a clean gap where BottomNav lives.               */
+
+@media (max-width: 768px) {
+    .chat-page-root {
+        /* 56px nav body + 8px top padding + safe-area inset.
+           Matches the bottom-nav `padding: 8px 0` + content. */
+        padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+        box-sizing: border-box;
+    }
+    /* The input-area is sticky inside chat-container; ensure it has
+       a touch of bottom breathing room above the now-gapped edge so
+       focus-ring and shadows aren't clipped. */
+    .chat-page-root .input-area {
+        padding-bottom: 12px;
+    }
+    /* Scroll-to-bottom pill should sit just above the composer now
+       that the composer is no longer under BottomNav. */
+    .scroll-to-bottom-btn {
+        bottom: 96px;
+    }
+    /* When docs panel is open as a full-screen sheet, its close button
+       must clear the bottom-nav too. */
+    .context-panel.open {
+        bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    }
+}
+
+/* On very small phones, BottomNav is a bit shorter; trim padding. */
+@media (max-width: 380px) {
+    .chat-page-root {
+        padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px));
     }
 }

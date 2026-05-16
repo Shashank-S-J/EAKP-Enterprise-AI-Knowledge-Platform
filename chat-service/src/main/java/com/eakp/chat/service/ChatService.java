@@ -86,10 +86,20 @@ public class ChatService {
             }
             final String effectiveQuery = rewrittenQuery;
 
-            // 2. Check semantic cache (fast pgvector cosine lookup)
+            // 2. Check semantic cache (fast pgvector cosine lookup).
+            //
+            // We skip the cache whenever the conversation has any attached
+            // documents — the cache is keyed only by (workspace, query
+            // embedding), so a same-looking query against a different file
+            // set would happily return the wrong cached answer. Re-generating
+            // a few extra times is cheap; serving the wrong answer is not.
             Optional<CachedAnswer> cached;
+            boolean hasAttachments = !attachedDocuments
+                    .attachedDocumentIds(conversationId, workspaceId).isEmpty();
             try {
-                cached = semanticCache.findSimilar(effectiveQuery, workspaceId);
+                cached = hasAttachments
+                        ? Optional.empty()
+                        : semanticCache.findSimilar(effectiveQuery, workspaceId);
             } catch (Exception e) {
                 log.warn("Semantic cache lookup failed: {}", e.getMessage());
                 cached = Optional.empty();
@@ -110,9 +120,26 @@ public class ChatService {
 
             metrics.recordCacheMiss();
 
-            // 3 + 4: Retrieve context and history
+            // 3 + 4: Retrieve context and history.
+            // Bare-reference focusing: if the user wrote a vague prompt like
+            // "explain", "summarize this", "tldr", or "what does it say" right
+            // after uploading a file, pin retrieval to that single most-recent
+            // file so we don't accidentally answer about an older attachment.
+            Optional<AttachedDocumentService.DocRef> mostRecentDoc =
+                    attachedDocuments.mostRecentAttachment(conversationId, workspaceId);
+            boolean bareReference = isBareDocReference(query);
+            final UUID focusedDocId = (bareReference && mostRecentDoc.isPresent())
+                    ? mostRecentDoc.get().id() : null;
+            final String focusedFilename = (focusedDocId == null) ? null
+                    : mostRecentDoc.get().filename();
+            if (focusedDocId != null) {
+                log.info("Bare-reference detected → focusing retrieval on most-recent doc '{}' ({})",
+                        focusedFilename, focusedDocId);
+            }
+
             return Mono.fromCallable(() -> {
-                        List<RetrievedChunk> context = ragPipeline.retrieve(effectiveQuery, workspaceId, conversationId);
+                        List<RetrievedChunk> context = ragPipeline.retrieve(
+                                effectiveQuery, workspaceId, conversationId, focusedDocId);
                         metrics.recordChunksRetrieved(context.size());
                         return context;
                     })
@@ -127,13 +154,20 @@ public class ChatService {
                             log.warn("Could not load history: {}", e.getMessage());
                         }
 
-                        // Limit context size to prevent LLM truncation
-                        List<RetrievedChunk> trimmedContext = trimContext(context);
+                        // Limit context size to prevent LLM truncation,
+                        // then reorder for lost-in-the-middle (best first,
+                        // second-best last). Reorder AFTER trimming so the
+                        // budget calculation works on the rerank order.
+                        List<RetrievedChunk> trimmedContext = reorderForEdges(trimContext(context));
 
                         // Files explicitly attached to this conversation — lets the LLM
                         // resolve references like "the resume" / "that PDF" without
-                        // needing the user to repeat the filename.
-                        List<String> attachedFiles = attachedDocuments.attachedFilenames(conversationId, workspaceId);
+                        // needing the user to repeat the filename. When we focused
+                        // retrieval on a single doc, show ONLY that one so the LLM
+                        // can't accidentally anchor on an older attachment.
+                        List<String> attachedFiles = (focusedFilename != null)
+                                ? List.of(focusedFilename)
+                                : attachedDocuments.attachedFilenames(conversationId, workspaceId);
 
                         // Detect documents the user JUST attached that have not
                         // finished ingestion yet. If context is empty AND there
@@ -154,16 +188,17 @@ public class ChatService {
                                 .distinct()
                                 .toList();
 
-                        // Cross-conversation memory: snippets from earlier chats in
-                        // the same workspace. Powers "summarize yesterday's discussion".
+                        // Cross-conversation memory: snippets from THIS USER's
+                        // earlier chats in the same workspace. Scoped to the
+                        // current user — other users' history is never read.
                         java.util.List<CrossConversationSearchService.PastMessage> pastMessages = crossConvSearch
                                 .findRelevantPastMessages(
-                                        effectiveQuery, workspaceId, conversationId);
+                                        effectiveQuery, workspaceId, userId, conversationId);
 
                         // Build the prompt
                         String systemPrompt = buildSystemPrompt(
                                 trimmedContext, attachedFiles, relatedFiles,
-                                pastMessages, pendingFiles);
+                                pastMessages, pendingFiles, focusedFilename);
                         String userMessage = buildUserMessage(effectiveQuery, history);
 
                         final List<RetrievedChunk> capturedContext = trimmedContext;
@@ -195,32 +230,39 @@ public class ChatService {
                                 .doOnError(e -> log.error("Streaming error for ws={}", workspaceId, e))
                                 .concatWith(Flux.just("[DONE]"));
                     });
-        }).onErrorResume(e -> {
-            log.error("Chat stream error for ws={}", workspaceId, e);
-            return Flux.just("[ERROR] " + e.getMessage(), "[DONE]");
         });
+        // Do NOT catch errors here with a fake "[ERROR] ..." token — the
+        // controller's onErrorResume maps real exceptions to a proper
+        // `event:error` SSE frame. Emitting them as text tokens caused the
+        // error message to render *inside* the assistant's answer bubble.
     }
 
     // ── Context trimming to fit LLM window ────────────────────────────────────
 
     /**
-     * Trim context chunks to fit within maxContextChars.
-     * Keeps highest-relevance chunks first.
+     * Trim context chunks to fit within {@code maxContextChars}. We keep
+     * complete chunks up to the budget; if a partial last chunk fits, we cut
+     * at the nearest sentence/paragraph boundary (never mid-sentence,
+     * never mid-citation), and only when the partial slice is at least
+     * 200 chars — smaller fragments aren't worth the truncation noise.
      */
     private List<RetrievedChunk> trimContext(List<RetrievedChunk> chunks) {
         List<RetrievedChunk> trimmed = new ArrayList<>();
         int totalChars = 0;
         for (RetrievedChunk chunk : chunks) {
             if (totalChars + chunk.content().length() > maxContextChars) {
-                // Include partial last chunk if space allows
                 int remaining = maxContextChars - totalChars;
-                if (remaining > 100) {
-                    trimmed.add(new RetrievedChunk(
-                            chunk.id(),
-                            chunk.content().substring(0, remaining) + "...",
-                            chunk.source(),
-                            chunk.documentId(),
-                            chunk.relevanceScore()));
+                if (remaining > 200) {
+                    String slice = chunk.content().substring(0, remaining);
+                    int cut = findSentenceBoundary(slice);
+                    if (cut > 200) {
+                        trimmed.add(new RetrievedChunk(
+                                chunk.id(),
+                                slice.substring(0, cut).trim() + " […]",
+                                chunk.source(),
+                                chunk.documentId(),
+                                chunk.relevanceScore()));
+                    }
                 }
                 break;
             }
@@ -233,6 +275,56 @@ public class ChatService {
                     chunks.stream().mapToInt(c -> c.content().length()).sum(), totalChars);
         }
         return trimmed;
+    }
+
+    /**
+     * Return the index of the last sentence/paragraph break in {@code text}.
+     * Falls back to {@code text.length()} if nothing better is found. Never
+     * returns inside a `[Source:` citation token so truncation can't damage
+     * a citation marker.
+     */
+    private static int findSentenceBoundary(String text) {
+        // Prefer paragraph break, then sentence terminators.
+        int[] candidates = new int[] {
+                text.lastIndexOf("\n\n"),
+                text.lastIndexOf(". "),
+                text.lastIndexOf("! "),
+                text.lastIndexOf("? "),
+                text.lastIndexOf("\n")
+        };
+        int best = -1;
+        for (int c : candidates) {
+            if (c > best) best = c;
+        }
+        if (best < 0) return text.length();
+        int end = best + 1; // include the punctuation
+        // If we'd land inside a `[Source: ...]` token, back up to before it.
+        int openCite = text.lastIndexOf("[Source:", end);
+        int closeCite = text.indexOf(']', openCite);
+        if (openCite >= 0 && closeCite > end) {
+            // The citation spans our cut point — rewind to before the open.
+            end = openCite;
+        }
+        return Math.max(end, 0);
+    }
+
+    /**
+     * Reorder a list of reranked chunks so the highest-relevance chunk is
+     * FIRST and the second-highest is LAST. Mid-relevance chunks fill the
+     * middle. This counters the well-documented "lost in the middle" failure
+     * mode where LLMs disproportionately attend to the edges of a long
+     * context window.
+     *
+     * <p>For lists of ≤2 items the original order is returned unchanged.</p>
+     */
+    private static List<RetrievedChunk> reorderForEdges(List<RetrievedChunk> ranked) {
+        int n = ranked.size();
+        if (n <= 2) return ranked;
+        List<RetrievedChunk> out = new ArrayList<>(n);
+        out.add(ranked.get(0));                  // strongest evidence first
+        for (int i = 2; i < n; i++) out.add(ranked.get(i)); // middling middle
+        out.add(ranked.get(1));                  // second-strongest last
+        return out;
     }
 
     // ── Post-processing (async, off streaming thread) ─────────────────────────
@@ -249,26 +341,17 @@ public class ChatService {
             GroundingResult grounding = hallucinationGuard.check(answer, context);
             metrics.recordFaithfulness(grounding.confidence());
 
-            if (!grounding.grounded()) {
-                log.warn("Ungrounded answer detected ws={} claims={}",
-                        workspaceId, grounding.unsupportedClaims());
+            boolean lowConfidence = !grounding.grounded()
+                    || grounding.confidence() < lowConfidenceThreshold;
+
+            if (lowConfidence) {
+                log.warn("Low-confidence answer ws={} grounded={} confidence={} claims={}",
+                        workspaceId, grounding.grounded(),
+                        grounding.confidence(), grounding.unsupportedClaims());
             }
 
-            // Semantic cache write — only when we had real context AND
-            // the answer is high-confidence. Caching empty-context replies
-            // poisons future lookups with "no documents" boilerplate.
-            if (!context.isEmpty() && grounding.confidence() >= lowConfidenceThreshold) {
-                List<String> sources = context.stream()
-                        .map(RetrievedChunk::source)
-                        .distinct()
-                        .collect(Collectors.toList());
-                semanticCache.store(effectiveQuery, workspaceId, answer, sources);
-            } else {
-                log.info("Skipping cache (context={}, confidence={})",
-                        context.size(), grounding.confidence());
-            }
-
-            // Persist messages to DB
+            // Persist sources first (used for both the cache write path AND
+            // the message row) so the citation list stays consistent.
             List<Message.SourceReference> sourceRefs = context.stream()
                     .map(c -> new Message.SourceReference(
                             c.id(),
@@ -278,12 +361,54 @@ public class ChatService {
                             c.source()))
                     .collect(Collectors.toList());
 
+            // Semantic cache write: only when we had real context AND the
+            // answer is BOTH grounded and high-confidence. Caching a
+            // low-confidence reply would replay a fabricated answer to
+            // future users.
+            if (!context.isEmpty() && grounding.grounded()
+                    && grounding.confidence() >= lowConfidenceThreshold) {
+                List<String> sources = context.stream()
+                        .map(RetrievedChunk::source)
+                        .distinct()
+                        .collect(Collectors.toList());
+                semanticCache.store(effectiveQuery, workspaceId, answer, sources);
+            } else {
+                log.info("Skipping cache (context={}, grounded={}, confidence={})",
+                        context.size(), grounding.grounded(), grounding.confidence());
+            }
+
+            // If the answer was low-confidence, persist a transparent
+            // version: the streamed text the user saw, plus an honest
+            // disclaimer line so the message row reflects reality. The
+            // `faithfulness` field already records the numeric score so the
+            // frontend can flag low-confidence messages visually if desired.
+            String persistedAnswer = lowConfidence
+                    ? appendLowConfidenceNotice(answer, grounding)
+                    : answer;
+
             persistMessagesAsync(conversationId, workspaceId,
-                    originalQuery, answer, sourceRefs, grounding.confidence());
+                    originalQuery, persistedAnswer, sourceRefs,
+                    grounding.confidence());
 
         } catch (Exception e) {
             log.error("Post-processing error for ws={}", workspaceId, e);
         }
+    }
+
+    /**
+     * Append a single, honest disclaimer line to an answer the grounding
+     * guard flagged as low-confidence. The streamed text the user already
+     * saw is preserved verbatim — the disclaimer only changes what's stored
+     * in conversation history (so retries and history-replay can't propagate
+     * the unflagged version).
+     */
+    private static String appendLowConfidenceNotice(String answer, GroundingResult g) {
+        if (answer == null) answer = "";
+        String tail = answer.endsWith("\n") ? "" : "\n";
+        return answer + tail
+                + "\n_— Note: this answer may not be fully supported by the "
+                + "uploaded documents. Please verify the specifics before "
+                + "relying on it._";
     }
 
     private void persistMessagesAsync(UUID conversationId,
@@ -309,7 +434,8 @@ public class ChatService {
                                      List<String> attachedFiles,
                                      List<String> relatedFiles,
                                      List<CrossConversationSearchService.PastMessage> pastMessages,
-                                     List<String> pendingFiles) {
+                                     List<String> pendingFiles,
+                                     String focusedFilename) {
         boolean hasContext = !context.isEmpty();
         boolean hasPast = pastMessages != null && !pastMessages.isEmpty();
         boolean hasPending = pendingFiles != null && !pendingFiles.isEmpty();
@@ -322,56 +448,78 @@ public class ChatService {
                         .map(f -> "\"" + f + "\"")
                         .collect(Collectors.joining(", "));
                 return """
-                        You are a knowledge assistant. The user just attached a
-                        file (%s) that is still being processed. Respond with
-                        EXACTLY this sentence and nothing else:
+                        You are EAKP, a friendly research librarian. The reader
+                        just attached a file (%s) that is still being processed.
+                        Respond with EXACTLY this sentence and nothing else:
 
-                        "Your file %s is still being processed — this usually \
-                        takes about 10–20 seconds. Please ask your question \
-                        again in a moment."
+                        "I'm still reading %s — give me about 10–20 seconds and \
+                        ask me again. I'll have it ready then."
                         """.formatted(list, list);
             }
             // Keep this short and factual — never invent metaphors or
             // multi-paragraph explanations. The user just needs to know
             // the retrieval pipeline returned no relevant chunks.
             return """
-                    You are a knowledge assistant. No relevant document content
-                    was retrieved for this question. Respond with exactly this
+                    You are EAKP, a friendly research librarian. Nothing in the
+                    workspace matches this question. Respond with exactly this
                     sentence and nothing else:
 
-                    "I couldn't find anything relevant in the uploaded documents \
-                    for that question. If you just uploaded a file, please wait a \
-                    few seconds for ingestion to finish and try again, or rephrase \
-                    your question."
+                    "I couldn't find anything on that in the uploaded documents \
+                    or earlier conversations. If you just uploaded a file, give \
+                    me a few seconds to finish reading it — otherwise try \
+                    rephrasing, or share a more specific keyword and I'll look \
+                    again."
                     """;
         }
 
-        String contextBlock = hasContext
-                ? context.stream()
-                .map(RetrievedChunk::toPromptString)
-                .collect(Collectors.joining("\n\n---\n\n"))
-                : "(no document chunks retrieved for this question)";
+        String contextBlock;
+        if (hasContext) {
+            // Number every chunk so the LLM can cite by index ([1], [2], …)
+            // and the reader can trace each claim back to a specific passage.
+            // Each block shows: index, source filename, then the content.
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < context.size(); i++) {
+                RetrievedChunk c = context.get(i);
+                if (i > 0) sb.append("\n\n---\n\n");
+                sb.append("[").append(i + 1).append("] Source: ")
+                        .append(c.source() == null ? "unknown" : c.source())
+                        .append("\n")
+                        .append(c.content());
+            }
+            contextBlock = sb.toString();
+        } else {
+            contextBlock = "(no document chunks retrieved for this question)";
+        }
 
-        // When the user attached files inline (ChatGPT-style), tell the LLM
-        // their filenames so it can resolve casual references ("the resume",
-        // "that PDF", "summarize this", "explain it") without needing exact
-        // names. The first file in the list is the "current" attachment
-        // (most-recent upload) and is what bare demonstratives like "this"
-        // / "it" / "the file" refer to.
-        String attachedBlock = (attachedFiles == null || attachedFiles.isEmpty())
-                ? ""
-                : """
-                        ATTACHED TO THIS CONVERSATION (most recent first). Treat \
-                        bare references like "this", "that", "it", "the file", \
-                        "the document", "this PDF", "summarize this", "explain \
-                        it", "what does this say" as referring to the FIRST file \
-                        in this list. Phrases like "the resume" / "the spec" / \
-                        "the contract" match by filename:
-                        %s
+        // ATTACHED block. When we've focused on a single freshly-uploaded
+        // file (bare reference like "explain" / "summarize this"), the block
+        // is hard-pinned to that one file so the model can't drift to an
+        // older attachment.
+        boolean focused = focusedFilename != null;
+        String attachedBlock;
+        if (attachedFiles == null || attachedFiles.isEmpty()) {
+            attachedBlock = "";
+        } else if (focused) {
+            attachedBlock = ("""
+                    PRIMARY ATTACHMENT (the reader's current reference resolves \
+                    to this file — answer about THIS file, not earlier ones):
+                      - %s
 
-                        """.formatted(attachedFiles.stream()
-                .map(f -> "  - " + f)
-                .collect(Collectors.joining("\n")));
+                    """).formatted(focusedFilename);
+        } else {
+            attachedBlock = """
+                    ATTACHED TO THIS CONVERSATION (most recent first). Treat \
+                    bare references like "this", "that", "it", "the file", \
+                    "the document", "this PDF", "summarize this", "explain \
+                    it", "what does this say" as referring to the FIRST file \
+                    in this list. Phrases like "the resume" / "the spec" / \
+                    "the contract" match by filename:
+                    %s
+
+                    """.formatted(attachedFiles.stream()
+                    .map(f -> "  - " + f)
+                    .collect(Collectors.joining("\n")));
+        }
 
         // Documents from elsewhere in the workspace that look relevant. The
         // LLM should mention these proactively (Rule 9) rather than silently
@@ -404,31 +552,71 @@ public class ChatService {
                 .collect(Collectors.joining("\n")));
 
         return """
-                You are an expert knowledge assistant for this workspace. You
-                answer using ONLY the CONTEXT, RELATED DOCUMENTS, and RECENT
-                RELATED CONVERSATIONS provided below. You are precise and
-                thorough.
+                You are EAKP, a meticulous research librarian for this
+                workspace. You guide the reader to the right shelf — calm,
+                warm, and exact. You speak like a knowledgeable human:
+                approachable, never robotic, never showy. You explain things
+                so a busy non-expert understands them on the first read.
 
-                %s%s%sRules:
-                1. Answer based SOLELY on the material above. Never use outside knowledge.
-                2. Cite EVERY factual claim with [Source: filename] or, when quoting
-                   a past conversation, [Source: chat "<title>", <date>].
-                3. If the user references something with vague language ("the resume",
-                   "that PDF", "yesterday's discussion", "the doc we talked about"),
-                   resolve it against the ATTACHED / RELATED / RECENT sections.
-                4. If the answer is partially supported, answer what you can and
-                   explicitly state what is missing.
-                5. If the answer is NOT supported at all, respond EXACTLY with:
-                   "I don't have enough information to answer that based on the
-                    uploaded documents or earlier conversations."
-                6. Be concise. Use bullet points for multi-part answers. Avoid
-                   repeating the question and avoid metaphors/analogies.
-                7. If multiple sources conflict, note the discrepancy.
-                8. Do NOT speculate, infer, or extrapolate beyond what is stated.
-                9. If you find a POTENTIALLY RELATED DOCUMENT that looks directly
-                   relevant but is not currently attached, finish your answer with
-                   one line: "I also have <filename> on this topic — want me to
-                   include it?".
+                %s%s%sHOW TO ANSWER
+                • Lead with the answer. The first line gives the reader what
+                  they asked for — no preamble, no restating the question.
+                • Then expand. Use short paragraphs (2–4 sentences) or a tight
+                  bulleted list when there are more than two parallel points.
+                • Define jargon the first time it appears, in plain language.
+                  Use everyday words by default; reach for the technical term
+                  only when it adds precision.
+                • Quote sparingly. Paraphrase in your own voice; reserve direct
+                  quotes for definitions, numbers, or wording that matters.
+                • Keep the tone helpful and human. Not "Per the document…" —
+                  more like "The contract says…" or "According to section 4…".
+                • When useful, close with one short pointer: "Want me to pull
+                  the exact clause?" or "I can also compare this with <other
+                  file> if helpful." One line, optional, never forced.
+
+                GROUNDING RULES (these are firm)
+                1. Answer using ONLY the CONTEXT, ATTACHED, RELATED, and RECENT
+                   sections above. Do not bring in outside knowledge or your
+                   training data.
+                2. Cite every factual claim with the chunk index that supports
+                   it, e.g. "the contract was signed on 14 March [3]". When a
+                   filename is more natural for the reader, write
+                   "[3, deal-memo.pdf]". For a past-chat citation use
+                   [chat: "<title>", <date>]. Citations go at the end of the
+                   sentence they support, not bunched at the end.
+                3. Resolve vague references using the lists above. If the
+                   PRIMARY ATTACHMENT block is present, the reader's "this" /
+                   "it" / "explain" / "summarize" refers to THAT file, and your
+                   answer must be about that file — even if other chunks slip
+                   through.
+                4. If the material only partially answers the question, answer
+                   what's supported and clearly name what's missing.
+                5. If nothing in the material supports the answer, reply
+                   exactly: "I don't have enough information to answer that
+                   based on the uploaded documents or earlier conversations."
+                6. If two sources disagree, surface the disagreement plainly:
+                   "Source A says X; Source B says Y."
+                7. Don't speculate, infer hidden intent, or extrapolate past
+                   what the text actually says.
+                8. If a POTENTIALLY RELATED DOCUMENT (other chats) looks
+                   directly useful, end with: "I also have <filename> on this
+                   topic — want me to include it?"
+
+                CALIBRATE YOUR LANGUAGE TO THE EVIDENCE
+                • Direct evidence in the chunks → state it plainly:
+                  "The contract sets the term at three years [2]."
+                • Strong implication that you have to read between the lines →
+                  hedge softly: "The contract appears to set a three-year
+                  term [2] — it's not stated outright but the renewal clause
+                  references that window."
+                • Weak / fragmentary evidence → be explicit about the gap:
+                  "The documents don't say exactly, but section 4.2 [5]
+                  mentions a renewal cycle that suggests three years."
+                • Nothing supports it → say so and stop. Don't pad. Don't
+                  pretend. Don't paraphrase your training data as if it were
+                  from the docs.
+                Never use absolute language ("definitely", "always", "the only
+                possible reading") unless the text itself uses it.
 
                 CONTEXT (%d chunks, %d characters):
                 %s
@@ -436,6 +624,45 @@ public class ChatService {
                 context.size(),
                 context.stream().mapToInt(c -> c.content().length()).sum(),
                 contextBlock);
+    }
+
+    // ── Bare-reference detection ──────────────────────────────────────────────
+
+    private static final java.util.regex.Pattern PLURAL_OR_INDEXED_REF =
+            java.util.regex.Pattern.compile(
+                    "\\b(these|those|them|both|all|first|second|third|earlier|previous|older|other)\\b",
+                    java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    private static final java.util.regex.Pattern SINGULAR_DEMONSTRATIVE =
+            java.util.regex.Pattern.compile(
+                    "\\b(this|that|it|its)\\b"
+                            + "|\\bthe\\s+(file|doc(ument)?|pdf|attachment|upload|resume|paper|report)\\b",
+                    java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    private static final java.util.regex.Pattern BARE_ACTION_VERB =
+            java.util.regex.Pattern.compile(
+                    "^\\s*(summari[sz]e|summary|tl;?dr|explain|describe|analy[sz]e|outline|"
+                            + "brief|recap|overview|review|walkthrough|breakdown|key\\s+points|"
+                            + "main\\s+points|what's\\s+this(\\s+about)?|continue|go\\s+on)"
+                            + "(\\s+(this|that|it|the\\s+\\w+))?\\s*[.!?]?\\s*$",
+                    java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    /**
+     * True when the user's message is a bare/demonstrative reference that
+     * should anchor on the most-recently-uploaded document (e.g. "explain",
+     * "summarize this", "tldr", "what does it say"). False for queries that
+     * name something specific or explicitly span multiple docs.
+     */
+    static boolean isBareDocReference(String query) {
+        if (query == null) return false;
+        String q = query.trim();
+        if (q.isEmpty()) return false;
+        // Plural / indexed references want a different doc on purpose.
+        if (PLURAL_OR_INDEXED_REF.matcher(q).find()) return false;
+        if (BARE_ACTION_VERB.matcher(q).matches()) return true;
+        // Very short prompts containing a singular demonstrative.
+        if (q.length() <= 60 && SINGULAR_DEMONSTRATIVE.matcher(q).find()) return true;
+        return false;
     }
 
     private String buildUserMessage(String query, String history) {

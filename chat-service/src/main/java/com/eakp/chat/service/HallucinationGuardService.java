@@ -32,7 +32,7 @@ public class HallucinationGuardService {
     private final ObjectMapper objectMapper;
 
     public HallucinationGuardService(@Qualifier("guardChatClient") ChatClient guardClient,
-                                      ObjectMapper objectMapper) {
+                                     ObjectMapper objectMapper) {
         this.guardClient = guardClient;
         this.objectMapper = objectMapper;
     }
@@ -42,7 +42,7 @@ public class HallucinationGuardService {
     @CircuitBreaker(name = "llmGuard", fallbackMethod = "checkFallback")
     @Timed(value = "rag.guard.latency", description = "Hallucination guard check latency")
     public GroundingResult check(String answer,
-                                  List<RetrievedChunk> context) {
+                                 List<RetrievedChunk> context) {
         if (context.isEmpty()) {
             return new GroundingResult(false, 0.0,
                     List.of("No context was retrieved"));
@@ -88,10 +88,14 @@ public class HallucinationGuardService {
             return parseResult(raw);
 
         } catch (Exception e) {
-            log.warn("Hallucination guard failed: {} — defaulting to grounded",
+            // Previously fail-open (grounded=true, conf=0.5). That let
+            // unverified answers ship + cache. Now: be conservative — treat
+            // a guard failure as "not verified" so the caller can append the
+            // low-confidence disclaimer and skip caching. The user still
+            // sees the streamed answer; only persistence/caching change.
+            log.warn("Hallucination guard failed: {} — treating as low-confidence",
                     e.getMessage());
-            // Non-fatal: fail open (show answer) but log for metrics
-            return new GroundingResult(true, 0.5,
+            return new GroundingResult(false, 0.0,
                     List.of("Guard check failed: " + e.getMessage()));
         }
     }
@@ -99,14 +103,17 @@ public class HallucinationGuardService {
     // ── Parsing ───────────────────────────────────────────────────────────────
 
     /**
-     * Circuit breaker fallback: fail open so the user still gets an answer.
+     * Circuit breaker fallback. Conservative: treat unavailable guard as
+     * unverified, not as "definitely grounded". The caller (ChatService) is
+     * responsible for appending a disclaimer + skipping cache, not for
+     * blocking the answer.
      */
     @SuppressWarnings("unused")
     private GroundingResult checkFallback(String answer,
-                                           List<RetrievedChunk> context,
-                                           Throwable t) {
-        log.warn("Guard circuit breaker triggered: {} — failing open", t.getMessage());
-        return new GroundingResult(true, 0.5,
+                                          List<RetrievedChunk> context,
+                                          Throwable t) {
+        log.warn("Guard circuit breaker triggered: {} — treating as low-confidence", t.getMessage());
+        return new GroundingResult(false, 0.0,
                 List.of("Guard unavailable: " + t.getMessage()));
     }
 
@@ -120,8 +127,8 @@ public class HallucinationGuardService {
 
             var node = objectMapper.readTree(json);
 
-            boolean      grounded   = node.path("grounded").asBoolean(true);
-            double       confidence = node.path("confidence").asDouble(0.8);
+            boolean      grounded   = node.path("grounded").asBoolean(false);
+            double       confidence = node.path("confidence").asDouble(0.0);
             List<String> claims     = objectMapper.convertValue(
                     node.path("unsupported_claims"),
                     objectMapper.getTypeFactory()
@@ -133,17 +140,21 @@ public class HallucinationGuardService {
             return new GroundingResult(grounded, confidence, claims);
 
         } catch (Exception e) {
+            // Parse failure: conservative default. Previously this returned
+            // grounded=true / conf=0.5 which silently bypassed every guard
+            // downstream check. Now we surface it as low-confidence so the
+            // disclaimer fires and caching is skipped.
             log.warn("Failed to parse grounding result: {}", e.getMessage());
-            return new GroundingResult(true, 0.5, List.of());
+            return new GroundingResult(false, 0.0, List.of());
         }
     }
 
     // ── Value Objects ─────────────────────────────────────────────────────────
 
     public record GroundingResult(
-        boolean      grounded,
-        double       confidence,
-        List<String> unsupportedClaims
+            boolean      grounded,
+            double       confidence,
+            List<String> unsupportedClaims
     ) {
         public boolean hasUnsupportedClaims() {
             return unsupportedClaims != null && !unsupportedClaims.isEmpty();

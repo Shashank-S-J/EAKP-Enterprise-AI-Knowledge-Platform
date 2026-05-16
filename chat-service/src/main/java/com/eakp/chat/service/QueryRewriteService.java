@@ -34,7 +34,7 @@ public class QueryRewriteService {
     private final MessageRepository messageRepository;
 
     public QueryRewriteService(@Qualifier("guardChatClient") ChatClient guardClient,
-                                MessageRepository messageRepository) {
+                               MessageRepository messageRepository) {
         this.guardClient = guardClient;
         this.messageRepository = messageRepository;
     }
@@ -122,7 +122,7 @@ public class QueryRewriteService {
 
     @SuppressWarnings("unused")
     private String rewriteFallback(String query, UUID conversationId,
-                                    UUID workspaceId, Throwable t) {
+                                   UUID workspaceId, Throwable t) {
         log.debug("Query rewrite fallback (circuit breaker): {}", t.getMessage());
         return query;
     }
@@ -132,9 +132,11 @@ public class QueryRewriteService {
      * common pronouns/references that need resolution.
      */
     private boolean isSelfContained(String query) {
-        if (query == null || query.length() > 200) return true; // Long queries are usually specific
+        if (query == null) return true;
         String lower = query.toLowerCase();
-        // Check for common anaphoric references
+        // Check for common anaphoric references. Long queries used to short-
+        // circuit as "self-contained" — they aren't, and skipping rewrite for
+        // them caused noticeably worse retrieval on multi-clause questions.
         String[] indicators = {"\\bit\\b", "\\bits\\b", "\\bthat\\b", "\\bthis\\b",
                 "\\bthese\\b", "\\bthose\\b", "\\bthem\\b", "\\btheir\\b",
                 "the same", "the above", "the previous", "mentioned",
@@ -152,4 +154,3 @@ public class QueryRewriteService {
         return text.length() <= maxLen ? text : text.substring(0, maxLen) + "...";
     }
 }
-

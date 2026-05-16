@@ -37,6 +37,7 @@ public class AttachedDocumentService {
                             SELECT id FROM documents
                             WHERE conversation_id = ?::uuid
                               AND workspace_id    = ?::uuid
+                              AND status          = 'READY'
                             """,
                     UUID.class,
                     conversationId.toString(), workspaceId.toString());
@@ -48,7 +49,9 @@ public class AttachedDocumentService {
     }
 
     /**
-     * Filenames attached to this conversation (any status) — used for the LLM hint.
+     * Filenames attached to this conversation (READY only) — used for the LLM hint.
+     * Excludes PENDING/PROCESSING/FAILED so the prompt never claims an
+     * in-flight upload is available context.
      */
     public List<String> attachedFilenames(UUID conversationId, UUID workspaceId) {
         if (conversationId == null)
@@ -59,6 +62,7 @@ public class AttachedDocumentService {
                             SELECT filename FROM documents
                             WHERE conversation_id = ?::uuid
                               AND workspace_id    = ?::uuid
+                              AND status          = 'READY'
                             ORDER BY created_at DESC
                             """,
                     String.class,
@@ -69,6 +73,43 @@ public class AttachedDocumentService {
             return List.of();
         }
     }
+
+    /**
+     * The single most-recently uploaded READY document attached to this
+     * conversation, as {@code [docId, filename]}. Used when a user query is a
+     * bare reference ("explain", "summarize this", "tldr", "what does it
+     * say") — we narrow retrieval to this one document so a freshly-ingested
+     * file is what gets answered, not whichever earlier doc happens to embed
+     * best.
+     *
+     * @return {@code Optional.empty()} when no READY docs are attached.
+     */
+    public java.util.Optional<DocRef> mostRecentAttachment(UUID conversationId, UUID workspaceId) {
+        if (conversationId == null) return java.util.Optional.empty();
+        try {
+            List<DocRef> rows = jdbcTemplate.query(
+                    """
+                            SELECT id, filename FROM documents
+                            WHERE conversation_id = ?::uuid
+                              AND workspace_id    = ?::uuid
+                              AND status          = 'READY'
+                            ORDER BY created_at DESC
+                            LIMIT 1
+                            """,
+                    (rs, n) -> new DocRef(
+                            UUID.fromString(rs.getString("id")),
+                            rs.getString("filename")),
+                    conversationId.toString(), workspaceId.toString());
+            return rows.isEmpty() ? java.util.Optional.empty() : java.util.Optional.of(rows.get(0));
+        } catch (Exception e) {
+            log.warn("Could not load most-recent attachment for conv={}: {}",
+                    conversationId, e.getMessage());
+            return java.util.Optional.empty();
+        }
+    }
+
+    /** Lightweight reference to an attached document. */
+    public record DocRef(UUID id, String filename) {}
 
     /**
      * Filenames of documents attached to this conversation whose ingestion is
